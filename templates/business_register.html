@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Business Registration - ExpensesIQ</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .form-section {
+      background: #f9f9f9;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .form-section h3 {
+      margin-top: 0;
+      color: #333;
+      font-size: 1.1em;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+    .form-row.full {
+      grid-template-columns: 1fr;
+    }
+    .error-msg {
+      color: #d32f2f;
+      background-color: #ffebee;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+      border-left: 4px solid #d32f2f;
+    }
+  </style>
+</head>
+<body class="auth-page">
+  <div class="auth-card" style="max-width: 600px;">
+    <h2>Register Your Business</h2>
+    
+    {% if error %}
+    <div class="error-msg">{{ error }}</div>
+    {% endif %}
+    
+    <form method="post">
+      <div class="form-section">
+        <h3>Business Information</h3>
+        <div class="form-row full">
+          <input name="business_name" placeholder="Business Name" required>
+        </div>
+        <div class="form-row full">
+          <input name="gst_id" placeholder="GST ID (e.g., 27AABCT1234H1Z0)" required>
+        </div>
+        <div class="form-row">
+          <select name="business_type" required>
+            <option value="">Select Business Type</option>
+            <option value="retail">Retail Shop</option>
+            <option value="wholesale">Wholesale</option>
+            <option value="trader">Trader</option>
+            <option value="manufacturing">Manufacturing</option>
+            <option value="service">Service</option>
+          </select>
+          <input name="phone" type="tel" placeholder="Phone Number">
+        </div>
+        <div class="form-row full">
+          <input name="email" type="email" placeholder="Business Email">
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h3>Address</h3>
+        <div class="form-row full">
+          <input name="address" placeholder="Street Address" required>
+        </div>
+        <div class="form-row">
+          <input name="city" placeholder="City" required>
+          <input name="state" placeholder="State" required>
+        </div>
+        <div class="form-row full">
+          <input name="pincode" placeholder="Pincode" required>
+        </div>
+      </div>
+
+      <button type="submit" style="width: 100%; padding: 12px; font-size: 1em;">Create Business Account</button>
+    </form>
+    <p><a href="/dashboard">Back to Dashboard</a></p>
+  </div>
+</body>
+</html>

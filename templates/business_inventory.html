@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory - ExpensesIQ Business</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      gap: 15px;
+    }
+    .btn-primary {
+      background: #1976d2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      width: auto;
+    }
+    .adjust-card {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .adjust-form {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+    .filters {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    th {
+      background: #f5f5f5;
+      padding: 15px;
+      text-align: left;
+      border-bottom: 2px solid #ddd;
+      font-weight: bold;
+    }
+    td {
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+    }
+    tr:hover {
+      background: #f9f9f9;
+    }
+    .low-stock {
+      color: #d32f2f;
+      font-weight: bold;
+    }
+    .medium-stock {
+      color: #f57c00;
+    }
+    .good-stock {
+      color: #388e3c;
+    }
+    @media (max-width: 900px) {
+      .adjust-form {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    @media (max-width: 560px) {
+      .adjust-form {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="navbar">
+      <div class="nav-brand">ExpensesIQ - Inventory</div>
+      <div class="nav-links">
+        <a href="/business/dashboard">Dashboard</a>
+        <a href="/business/products">Products</a>
+        <a href="/business/inventory">Inventory</a>
+        <a href="/business/invoices">Invoices</a>
+        <a href="/business/purchases">Purchases</a>
+        <a href="/business/gst">GST</a>
+        <a href="/logout">Logout</a>
+      </div>
+    </nav>
+
+    <div class="page-header">
+      <h2>Inventory Management</h2>
+      <a href="/business/branches" class="btn-primary">Manage Branches</a>
+    </div>
+
+    <div class="adjust-card">
+      <h3>Stock Adjustment</h3>
+      <form class="adjust-form" onsubmit="updateStock(event)">
+        <label>
+          Branch
+          <select id="adjustBranch" required>
+            <option value="">Select branch</option>
+            {% for branch in branches %}
+            <option value="{{ branch.id }}" {% if branch.id == selected_branch_id %}selected{% endif %}>{{ branch.branch_name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Product
+          <select id="adjustProduct" required>
+            <option value="">Select product</option>
+            {% for product in products %}
+            <option value="{{ product.id }}">{{ product.product_name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Stock Qty
+          <input id="adjustQuantity" type="number" min="0" step="0.01" required>
+        </label>
+        <label>
+          Reorder Level
+          <input id="adjustReorder" type="number" min="0" step="0.01" value="10">
+        </label>
+        <button type="submit" class="btn-primary">Save Stock</button>
+      </form>
+    </div>
+
+    <div class="filters">
+      <label for="branchSelect">Select Branch: </label>
+      <select id="branchSelect" onchange="selectBranch(this.value)" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+        <option value="">-- Select Branch --</option>
+        {% for branch in branches %}
+        <option value="{{ branch.id }}" {% if branch.id == selected_branch_id %}selected{% endif %}>{{ branch.branch_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {% if inventory %}
+    <table>
+      <tr>
+        <th>Product Name</th>
+        <th>SKU</th>
+        <th>Stock Quantity</th>
+        <th>Unit Price</th>
+        <th>Reorder Level</th>
+        <th>Status</th>
+        <th>Last Updated</th>
+      </tr>
+      {% for item in inventory %}
+      <tr>
+        <td>{{ item.product_name }}</td>
+        <td>{{ item.sku }}</td>
+        <td>
+          {% if item.stock_quantity < item.reorder_level %}
+            <span class="low-stock">{{ item.stock_quantity }}</span>
+          {% elif item.stock_quantity < (item.reorder_level * 1.5) %}
+            <span class="medium-stock">{{ item.stock_quantity }}</span>
+          {% else %}
+            <span class="good-stock">{{ item.stock_quantity }}</span>
+          {% endif %}
+        </td>
+        <td>Rs. {{ "%.2f" | format(item.unit_price) }}</td>
+        <td>{{ item.reorder_level }}</td>
+        <td>
+          {% if item.stock_quantity < item.reorder_level %}
+            <span class="badge badge-danger">Low Stock</span>
+          {% elif item.stock_quantity < (item.reorder_level * 1.5) %}
+            <span class="badge badge-warning">Medium</span>
+          {% else %}
+            <span class="badge badge-success">OK</span>
+          {% endif %}
+        </td>
+        <td>{{ item.last_updated | default('N/A') }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <p>{% if selected_branch_id %}No inventory for selected branch. <a href="/business/products">Add products first</a>{% else %}Select a branch to view inventory{% endif %}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <script>
+    function selectBranch(branchId) {
+      if (branchId) {
+        window.location.href = '/business/inventory?branch_id=' + branchId;
+      }
+    }
+
+    async function updateStock(event) {
+      event.preventDefault();
+      const data = {
+        branch_id: document.getElementById('adjustBranch').value,
+        product_id: document.getElementById('adjustProduct').value,
+        quantity: document.getElementById('adjustQuantity').value,
+        reorder_level: document.getElementById('adjustReorder').value,
+        notes: 'Manual stock adjustment'
+      };
+
+      const response = await fetch('/business/api/update-stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (result.success) {
+        window.location.href = '/business/inventory?branch_id=' + data.branch_id;
+      } else {
+        alert(result.error || 'Unable to update stock');
+      }
+    }
+  </script>
+</body>
+</html>

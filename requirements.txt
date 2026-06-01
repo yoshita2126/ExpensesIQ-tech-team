@@ -1,0 +1,17 @@
+Flask>=2.0
+Werkzeug>=2.0
+reportlab>=3.6
+
+# Optional / future features
+# requests
+# openai (optional, for AI enhancements)
+openai
+pytesseract
+Pillow
+python-dotenv
+requests
+# PyJWT for JWT auth
+PyJWT
+# pyjwt
+# sqlalchemy
+# scikit-learn

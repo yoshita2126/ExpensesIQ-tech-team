@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoices - ExpensesIQ Business</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .page-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }
+    .btn-primary { background: #1976d2; color: white; border: 0; padding: 10px 18px; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; width: auto; }
+    .btn-secondary { background: #eef2ff; color: #1e3a8a; border: 0; padding: 8px 12px; border-radius: 4px; cursor: pointer; width: auto; }
+    .modal { display: none; position: fixed; z-index: 2; inset: 0; background: rgba(15,23,42,0.45); overflow: auto; }
+    .modal-content { background: white; margin: 4% auto; padding: 22px; border-radius: 8px; width: 92%; max-width: 680px; }
+    .modal-close { float: right; font-size: 1.5em; cursor: pointer; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group label { display: block; font-weight: 700; margin-top: 10px; }
+    .status-pill { padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 0.8em; }
+    .status-paid { background: #dcfce7; color: #166534; }
+    .status-unpaid { background: #fee2e2; color: #991b1b; }
+    @media (max-width: 700px) { .form-row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="navbar">
+      <div class="nav-brand">ExpensesIQ - Invoices</div>
+      <div class="nav-links">
+        <a href="/business/dashboard">Dashboard</a>
+        <a href="/business/invoices">Invoices</a>
+        <a href="/business/purchases">Purchases</a>
+        <a href="/business/gst">GST</a>
+        <a href="/logout">Logout</a>
+      </div>
+    </nav>
+
+    <div class="page-header">
+      <h2>Sales Billing & Tracking</h2>
+      <button class="btn-primary" onclick="openModal()">Create Invoice</button>
+    </div>
+
+    {% if invoices %}
+    <table>
+      <thead>
+        <tr>
+          <th>Invoice</th>
+          <th>Customer</th>
+          <th>Branch</th>
+          <th>Date</th>
+          <th>Total</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for invoice in invoices %}
+        <tr>
+          <td>{{ invoice.invoice_number }}</td>
+          <td>{{ invoice.customer_name }}</td>
+          <td>{{ invoice.branch_name }}</td>
+          <td>{{ invoice.invoice_date }}</td>
+          <td>Rs. {{ "%.2f" | format(invoice.total_amount) }}</td>
+          <td>
+            <span class="status-pill {% if invoice.payment_status == 'paid' %}status-paid{% else %}status-unpaid{% endif %}">
+              {{ invoice.payment_status | title }}
+            </span>
+          </td>
+          <td>
+            {% if invoice.payment_status != 'paid' %}
+            <button class="btn-secondary" onclick="markPaid({{ invoice.id }})">Mark Paid</button>
+            {% else %}
+            -
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card">
+      <h2>No invoices yet</h2>
+      <p>Create a sales invoice to track receivables, reduce stock, and record output GST automatically.</p>
+    </div>
+    {% endif %}
+
+    <div id="invoiceModal" class="modal">
+      <div class="modal-content">
+        <span class="modal-close" onclick="closeModal()">&times;</span>
+        <h2>Create Sales Invoice</h2>
+        <form onsubmit="createInvoice(event)">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Customer Name *</label>
+              <input id="customerName" required>
+            </div>
+            <div class="form-group">
+              <label>Customer Phone</label>
+              <input id="customerPhone">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Customer Email</label>
+              <input id="customerEmail" type="email">
+            </div>
+            <div class="form-group">
+              <label>Due Date</label>
+              <input id="dueDate" type="date">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Branch *</label>
+              <select id="branchId" required>
+                <option value="">Select branch</option>
+                {% for branch in branches %}
+                <option value="{{ branch.id }}">{{ branch.branch_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Product *</label>
+              <select id="productId" required>
+                <option value="">Select product</option>
+                {% for product in products %}
+                <option value="{{ product.id }}">{{ product.product_name }} - Rs. {{ "%.2f" | format(product.unit_price) }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Quantity *</label>
+              <input id="quantity" type="number" min="0.01" step="0.01" required>
+            </div>
+            <div class="form-group">
+              <label>Notes</label>
+              <input id="notes">
+            </div>
+          </div>
+          <button type="submit" class="btn-primary">Save Invoice</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openModal() { document.getElementById('invoiceModal').style.display = 'block'; }
+    function closeModal() { document.getElementById('invoiceModal').style.display = 'none'; }
+
+    async function createInvoice(event) {
+      event.preventDefault();
+      const data = {
+        customer_name: document.getElementById('customerName').value,
+        customer_phone: document.getElementById('customerPhone').value,
+        customer_email: document.getElementById('customerEmail').value,
+        due_date: document.getElementById('dueDate').value,
+        branch_id: document.getElementById('branchId').value,
+        product_id: document.getElementById('productId').value,
+        quantity: document.getElementById('quantity').value,
+        notes: document.getElementById('notes').value
+      };
+      const response = await fetch('/business/api/create-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (result.success) {
+        location.reload();
+      } else {
+        alert(result.error || 'Unable to create invoice');
+      }
+    }
+
+    async function markPaid(invoiceId) {
+      const response = await fetch('/business/api/mark-invoice-paid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoice_id: invoiceId })
+      });
+      const result = await response.json();
+      if (result.success) {
+        location.reload();
+      } else {
+        alert(result.error || 'Unable to update invoice');
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Products - ExpensesIQ Business</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .btn-primary {
+      background: #1976d2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-primary:hover {
+      background: #1565c0;
+    }
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    .product-card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      border-top: 4px solid #1976d2;
+    }
+    .product-card h3 {
+      margin: 0 0 10px 0;
+      color: #333;
+    }
+    .product-card .sku {
+      color: #666;
+      font-size: 0.85em;
+      margin-bottom: 10px;
+    }
+    .product-info {
+      font-size: 0.9em;
+      margin-bottom: 5px;
+    }
+    .price {
+      color: #1976d2;
+      font-weight: bold;
+      font-size: 1.2em;
+      margin-top: 10px;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.4);
+      overflow: auto;
+    }
+    .modal-content {
+      background-color: white;
+      margin: 5% auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 600px;
+    }
+    .modal-close {
+      float: right;
+      font-size: 1.5em;
+      cursor: pointer;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="navbar">
+      <div class="nav-brand">ExpensesIQ - Products</div>
+      <div class="nav-links">
+        <a href="/business/dashboard">Dashboard</a>
+        <a href="/business/products">Products</a>
+        <a href="/business/inventory">Inventory</a>
+        <a href="/business/invoices">Invoices</a>
+        <a href="/business/purchases">Purchases</a>
+        <a href="/business/gst">GST</a>
+        <a href="/logout">Logout</a>
+      </div>
+    </nav>
+
+    <div class="page-header">
+      <h2>Manage Products</h2>
+      <button class="btn-primary" onclick="openModal()">Add Product</button>
+    </div>
+
+    {% if products %}
+    <div class="product-grid">
+      {% for product in products %}
+      <div class="product-card">
+        <h3>{{ product.product_name }}</h3>
+        <div class="sku">SKU: {{ product.sku }}</div>
+        <div class="product-info">Category: {{ product.category | default('Uncategorized') }}</div>
+        <div class="product-info">Cost: Rs. {{ "%.2f" | format(product.cost_price) }}</div>
+        <div class="price">Rs. {{ "%.2f" | format(product.unit_price) }}</div>
+        {% if product.tax_rate > 0 %}
+        <div class="product-info">Tax: {{ product.tax_rate }}%</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <p>No products created yet. <button class="btn-primary" onclick="openModal()">Create one now</button></p>
+    </div>
+    {% endif %}
+
+    <div id="addProductModal" class="modal">
+      <div class="modal-content">
+        <span class="modal-close" onclick="closeModal()">&times;</span>
+        <h2>Add New Product</h2>
+        <form onsubmit="addProduct(event)">
+          <div class="form-group">
+            <label>Product Name *</label>
+            <input type="text" id="productName" placeholder="e.g., Wooden Chair" required>
+          </div>
+          <div class="form-group">
+            <label>SKU (Stock Keeping Unit) *</label>
+            <input type="text" id="productSku" placeholder="e.g., WC-001" required>
+          </div>
+          <div class="form-group">
+            <label>Category</label>
+            <input type="text" id="productCategory" placeholder="e.g., Furniture">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Cost Price (Rs.) *</label>
+              <input type="number" id="productCostPrice" step="0.01" placeholder="0.00" required>
+            </div>
+            <div class="form-group">
+              <label>Selling Price (Rs.) *</label>
+              <input type="number" id="productUnitPrice" step="0.01" placeholder="0.00" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Tax Rate (%)</label>
+            <select id="productTaxRate">
+              <option value="0">No Tax (0%)</option>
+              <option value="5">GST 5%</option>
+              <option value="12">GST 12%</option>
+              <option value="18">GST 18%</option>
+              <option value="28">GST 28%</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <textarea id="productDescription" placeholder="Product description" rows="3"></textarea>
+          </div>
+          <button type="submit" class="btn-primary" style="width: 100%;">Add Product</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openModal() {
+      document.getElementById('addProductModal').style.display = 'block';
+    }
+
+    function closeModal() {
+      document.getElementById('addProductModal').style.display = 'none';
+    }
+
+    async function addProduct(event) {
+      event.preventDefault();
+      
+      const data = {
+        product_name: document.getElementById('productName').value,
+        sku: document.getElementById('productSku').value,
+        category: document.getElementById('productCategory').value,
+        cost_price: parseFloat(document.getElementById('productCostPrice').value),
+        unit_price: parseFloat(document.getElementById('productUnitPrice').value),
+        tax_rate: parseFloat(document.getElementById('productTaxRate').value),
+        description: document.getElementById('productDescription').value
+      };
+
+      try {
+        const response = await fetch('/business/api/add-product', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          alert('Product added successfully!');
+          location.reload();
+        } else {
+          alert('Error: ' + result.error);
+        }
+      } catch (error) {
+        alert('Error adding product: ' + error);
+      }
+    }
+
+    window.onclick = function(event) {
+      const modal = document.getElementById('addProductModal');
+      if (event.target === modal) {
+        modal.style.display = 'none';
+      }
+    }
+  </script>
+</body>
+</html>

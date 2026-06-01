@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Branches - ExpensesIQ Business</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .btn-primary {
+      background: #1976d2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-primary:hover {
+      background: #1565c0;
+    }
+    .branch-card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 15px;
+    }
+    .branch-card h3 {
+      margin-top: 0;
+      color: #1976d2;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.4);
+    }
+    .modal-content {
+      background-color: white;
+      margin: 10% auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 500px;
+    }
+    .modal-close {
+      float: right;
+      font-size: 1.5em;
+      cursor: pointer;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .form-group input, .form-group textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="navbar">
+      <div class="nav-brand">ExpensesIQ - Branches</div>
+      <div class="nav-links">
+        <a href="/business/dashboard">Dashboard</a>
+        <a href="/business/branches">Branches</a>
+        <a href="/business/inventory">Inventory</a>
+        <a href="/business/invoices">Invoices</a>
+        <a href="/business/purchases">Purchases</a>
+        <a href="/business/gst">GST</a>
+        <a href="/logout">Logout</a>
+      </div>
+    </nav>
+
+    <div class="page-header">
+      <h2>Manage Branches</h2>
+      <button class="btn-primary" onclick="openModal()">Add Branch</button>
+    </div>
+
+    {% if branches %}
+    <div>
+      {% for branch in branches %}
+      <div class="branch-card">
+        <h3>{{ branch.branch_name }}</h3>
+        <p><strong>Address:</strong> {{ branch.address }}, {{ branch.city }}, {{ branch.state }} {{ branch.pincode }}</p>
+        <p><strong>Phone:</strong> {{ branch.phone }}</p>
+        <p><strong>Status:</strong> <span class="badge badge-success">{{ branch.status | title }}</span></p>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <p>No branches created yet. <button class="btn-primary" onclick="openModal()">Create one now</button></p>
+    </div>
+    {% endif %}
+
+    <div id="addBranchModal" class="modal">
+      <div class="modal-content">
+        <span class="modal-close" onclick="closeModal()">&times;</span>
+        <h2>Add New Branch</h2>
+        <form onsubmit="addBranch(event)">
+          <div class="form-group">
+            <label>Branch Name *</label>
+            <input type="text" id="branchName" placeholder="e.g., Main Store, Downtown Branch" required>
+          </div>
+          <div class="form-group">
+            <label>Address *</label>
+            <input type="text" id="branchAddress" placeholder="Street address" required>
+          </div>
+          <div class="form-group">
+            <label>City *</label>
+            <input type="text" id="branchCity" placeholder="City" required>
+          </div>
+          <div class="form-group">
+            <label>State *</label>
+            <input type="text" id="branchState" placeholder="State" required>
+          </div>
+          <div class="form-group">
+            <label>Pincode *</label>
+            <input type="text" id="branchPincode" placeholder="Pincode" required>
+          </div>
+          <div class="form-group">
+            <label>Phone</label>
+            <input type="tel" id="branchPhone" placeholder="Phone number">
+          </div>
+          <button type="submit" class="btn-primary">Create Branch</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openModal() {
+      document.getElementById('addBranchModal').style.display = 'block';
+    }
+
+    function closeModal() {
+      document.getElementById('addBranchModal').style.display = 'none';
+    }
+
+    async function addBranch(event) {
+      event.preventDefault();
+      
+      const data = {
+        branch_name: document.getElementById('branchName').value,
+        address: document.getElementById('branchAddress').value,
+        city: document.getElementById('branchCity').value,
+        state: document.getElementById('branchState').value,
+        pincode: document.getElementById('branchPincode').value,
+        phone: document.getElementById('branchPhone').value
+      };
+
+      try {
+        const response = await fetch('/business/api/create-branch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          alert('Branch created successfully!');
+          location.reload();
+        } else {
+          alert('Error: ' + result.error);
+        }
+      } catch (error) {
+        alert('Error creating branch: ' + error);
+      }
+    }
+
+    window.onclick = function(event) {
+      const modal = document.getElementById('addBranchModal');
+      if (event.target === modal) {
+        modal.style.display = 'none';
+      }
+    }
+  </script>
+</body>
+</html>

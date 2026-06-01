@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Expense Tracker Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>Expense Tracker</h1>
+      <p>One dashboard for {{group_name}} - {{role|capitalize}}</p>
+    </div>
+    <div class="nav-links">
+      <span>Welcome, {{user}}</span>
+      <form method="post" action="/set_member" class="member-form">
+        <input name="member_name" placeholder="Your name (for actions)" value="{{member_name}}">
+        <button type="submit">Set</button>
+      </form>
+      <button id="dark-toggle" title="Toggle dark mode">🌙</button>
+      <a href="/logout">Logout</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-card">
+      <div>
+        <h2>Track, save, and grow with ease.</h2>
+        <p>Built for households and businesses, this dashboard gives you spending alerts, goals, reports, and shared family access.</p>
+      </div>
+      <div class="hero-tags">
+        <span>Daily Limit Alert</span>
+        <span>Goal Progress</span>
+        <span>Category Insights</span>
+      </div>
+    </div>
+  </section>
+
+  {% if alert %}
+    <div class="alert">{{alert}}</div>
+  {% endif %}
+
+  <section class="summary-grid">
+    <article class="card metric-card">
+      <div class="card-top">
+        <div class="metric-icon">📉</div>
+        <div>
+          <h2>Expenses</h2>
+          <p class="big">₹{{total_expense}}</p>
+          <small>{% if role == 'business' %}No daily limit{% else %}Daily limit: ₹{{day_limit}}{% endif %}</small>
+        </div>
+      </div>
+    </article>
+    <article class="card metric-card">
+      <div class="card-top">
+        <div class="metric-icon">📈</div>
+        <div>
+          <h2>Income</h2>
+          <p class="big">₹{{total_income}}</p>
+          <small>Business and household income</small>
+        </div>
+      </div>
+    </article>
+    {% if role == 'business' %}
+    <article class="card metric-card">
+      <div class="card-top">
+        <div class="metric-icon">💼</div>
+        <div>
+          <h2>Profit / Loss</h2>
+          <p class="big">₹{{net_balance}}</p>
+          <small>{% if net_balance >= 0 %}Net Positive{% else %}Net Negative{% endif %}</small>
+        </div>
+      </div>
+    </article>
+    {% else %}
+    <article class="card metric-card">
+      <div class="card-top">
+        <div class="metric-icon">💰</div>
+        <div>
+          <h2>Net Savings</h2>
+          <p class="big">₹{{net_balance}}</p>
+          <small>{% if net_balance >= 0 %}Positive balance{% else %}Overspent{% endif %}</small>
+        </div>
+      </div>
+    </article>
+    {% endif %}
+  </section>
+
+  <section class="panel-grid">
+    <div class="panel">
+      <h2>Add Transaction</h2>
+      <form method="post" id="transaction-form">
+        <input type="hidden" name="action" value="transaction">
+        <select name="type" required>
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+        </select>
+        <input name="amount" type="number" step="0.01" placeholder="Amount" required>
+        <select name="category" id="category-select" required>
+          <option value="" disabled selected>Select category</option>
+          <option value="Office Expenses">🧾 Office Expenses</option>
+          <option value="Salaries & Wages">👨‍💼 Salaries & Wages</option>
+          <option value="Transportation & Delivery">🚚 Transportation & Delivery</option>
+          <option value="Utilities">💡 Utilities</option>
+          <option value="Rent & Maintenance">🏢 Rent & Maintenance</option>
+          <option value="Inventory/Purchases">📦 Inventory/Purchases</option>
+          <option value="Marketing & Advertising">📢 Marketing & Advertising</option>
+          <option value="Software & Tools">💻 Software & Tools</option>
+          <option value="Taxes & Fees">🏦 Taxes & Fees</option>
+          <option value="Maintenance & Repairs">🔧 Maintenance & Repairs</option>
+          <option value="Other">Other</option>
+        </select>
+        <input name="category_other" id="category-other" type="text" placeholder="Type a custom category" style="display:none;">
+        <input name="note" placeholder="Note (optional)">
+        <button type="submit">Save</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>Set Goal</h2>
+      <form method="post">
+        <input type="hidden" name="action" value="goal">
+        <input name="title" placeholder="Goal name" required>
+        <input name="target" type="number" step="0.01" placeholder="Target amount" required>
+        <input name="saved" type="number" step="0.01" placeholder="Already saved" value="0" required>
+        <input name="due_date" type="date" placeholder="Due date">
+        <button type="submit">Add Goal</button>
+      </form>
+    </div>
+
+    {% if role != 'business' %}
+    <div class="panel">
+      <h2>Your Daily Limit</h2>
+      <form method="post">
+        <input type="hidden" name="action" value="set_limit">
+        <input name="daily_limit" type="number" step="0.01" placeholder="Set personal daily limit" value="{{member_limit or ''}}">
+        <button type="submit">Save</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if show_business_features %}
+    <div class="panel">
+      <h2>Track Payment / Invoice</h2>
+      <form method="post">
+        <input type="hidden" name="action" value="payment">
+        <select name="direction" required>
+          <option value="out">Outgoing</option>
+          <option value="in">Incoming</option>
+        </select>
+        <input name="pay_amount" type="number" step="0.01" placeholder="Amount" required>
+        <input name="description" placeholder="Description" required>
+        <select name="status" required>
+          <option value="due">Due</option>
+          <option value="paid">Paid</option>
+        </select>
+        <input name="due_date_payment" type="date" placeholder="Due date">
+        <button type="submit">Add Payment</button>
+      </form>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="report-section">
+    <div class="report-card">
+      <h2>Category Insights</h2>
+      <form method="get" class="date-filter-form">
+        <label>
+          From
+          <input type="date" name="date_from" value="{{filter_from}}">
+        </label>
+        <label>
+          To
+          <input type="date" name="date_to" value="{{filter_to}}">
+        </label>
+        <button type="submit">Apply</button>
+      </form>
+      <div class="pie-area">
+        <div class="chart-and-list">
+          <div class="chart-wrap">
+            <canvas id="categoryChart" width="280" height="280"></canvas>
+          </div>
+
+          <div class="insights-list">
+            {% if category_data %}
+              <!-- rows populated by server-side for progressive enhancement -->
+              {% set total = 0 %}
+              {% for item in category_data %}
+                {% set total = total + item.amount %}
+              {% endfor %}
+              {% for item in category_data %}
+                {% set hue = loop.index0 * 45 %}
+                {% set pct = (item.amount / total * 100) if total else 0 %}
+                <div class="insight-row">
+                  <div class="insight-main">
+                    <span class="insight-color" style="background-color: hsl({{ hue }}, 70%, 50%)"></span>
+                    <div class="insight-meta">
+                      <div class="insight-label">{{item.category}}</div>
+                      <div class="insight-amount">₹{{item.amount}} • {{pct|round(1)}}%</div>
+                    </div>
+                  </div>
+                  <div class="insight-bar-track">
+                    <div class="insight-bar-fill" style="width: {{pct}}%; background-color: hsl({{ hue }}, 70%, 50%);"></div>
+                  </div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <p>No category data available yet.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <p class="legend-note">Showing expenses from {{filter_from}} to {{filter_to}}.</p>
+    </div>
+  </section>
+
+  <section class="table-section">
+    <div class="table-card">
+      <h2>Shared Transactions</h2>
+      <div style="display:flex; gap:8px; margin-bottom:8px;">
+        <a class="button" href="/export/csv">Export CSV</a>
+        <a class="button" href="/export/pdf">Export PDF</a>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Date</th><th>User</th><th>Type</th><th>Amount</th><th>Category</th><th>Note</th><th>Edit</th></tr>
+        </thead>
+        <tbody>
+          {% for trx in transactions %}
+            <tr>
+              <td>{{trx.date}}</td>
+              <td>{{trx.user}}</td>
+              <td>{{trx.type|capitalize}}</td>
+              <td>₹{{trx.amount}}</td>
+              <td>{{trx.category}}</td>
+              <td>{{trx.note}}</td>
+              <td>
+                <a href="/edit/{{trx.id}}">Edit</a>
+                &nbsp;|&nbsp;
+                <a href="/delete/{{trx.id}}" onclick="return confirm('Delete this transaction?')">Delete</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <!-- Pagination -->
+      <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+        {% if page and total_pages %}
+          {% if page > 1 %}
+            <a href="?page={{page-1}}">Previous</a>
+          {% endif %}
+          <span>Page {{page}} / {{total_pages}}</span>
+          {% if page < total_pages %}
+            <a href="?page={{page+1}}">Next</a>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="table-card">
+      <h2>Goals & Progress</h2>
+      {% if goals %}
+        {% for goal in goals %}
+          <div class="goal-item">
+            <div class="goal-title">{{goal.title}} (₹{{goal.saved}} / ₹{{goal.target}})</div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: {{goal.progress}}%;"></div>
+            </div>
+            <small>Progress: {{goal.progress}}%{% if goal.due_date %} • Due {{goal.due_date}}{% endif %}</small>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p>No goals yet. Add one to start saving.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if show_business_features %}
+  <section class="table-section">
+    <div class="table-card">
+      <h2>Invoice / Payment Tracking</h2>
+      <table>
+        <thead>
+          <tr><th>Date</th><th>Type</th><th>Description</th><th>Status</th><th>Amount</th></tr>
+        </thead>
+        <tbody>
+          {% for payment in payments %}
+            <tr>
+              <td>{{payment.due_date or '—'}}</td>
+              <td>{{payment.direction|capitalize}}</td>
+              <td>{{payment.description}}</td>
+              <td>{{payment.status|capitalize}}</td>
+              <td>₹{{payment.amount}}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+  <script>
+    const categorySelect = document.getElementById('category-select');
+    const categoryOther = document.getElementById('category-other');
+
+    function updateCategoryOther() {
+      if (categorySelect.value === 'Other') {
+        categoryOther.style.display = 'block';
+        categoryOther.required = true;
+      } else {
+        categoryOther.style.display = 'none';
+        categoryOther.required = false;
+        categoryOther.value = '';
+      }
+    }
+
+    if (categorySelect) {
+      categorySelect.addEventListener('change', updateCategoryOther);
+      updateCategoryOther();
+    }
+  </script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // Render category pie chart
+    let categoryData;
+    try {
+      categoryData = {{ category_data|default([])|tojson }} || [];
+    } catch (e) {
+      categoryData = [];
+    }
+
+    const labels = categoryData.map(i => i.category);
+    const data = categoryData.map(i => i.amount);
+    const colors = labels.map((l, idx) => `hsl(${idx * 45}, 70%, 50%)`);
+
+    const ctx = document.getElementById('categoryChart');
+    if (ctx && labels.length) {
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Amount',
+            data: data,
+            backgroundColor: colors,
+            borderRadius: 8,
+            barThickness: 18,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: { color: '#475569' },
+              grid: { color: 'rgba(15,23,42,0.04)' }
+            },
+            y: {
+              ticks: { color: '#0f172a' },
+              grid: { display: false }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: { mode: 'nearest' }
+          }
+        }
+      });
+    }
+
+    // Animate insight bars (in case server rendered them statically)
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.insight-bar-fill').forEach(el => {
+        const w = el.style.width || '0%';
+        el.style.width = '0%';
+        setTimeout(() => { el.style.width = w; }, 120);
+      });
+    });
+
+    // Dark mode toggle
+    const darkToggle = document.getElementById('dark-toggle');
+    function applyDark(val) {
+      if (val) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+
+    const saved = localStorage.getItem('dark_mode') === '1';
+    applyDark(saved);
+
+    if (darkToggle) {
+      darkToggle.addEventListener('click', () => {
+        const now = document.documentElement.classList.toggle('dark');
+        localStorage.setItem('dark_mode', now ? '1' : '0');
+      });
+    }
+  </script>
+</body>
+</html>

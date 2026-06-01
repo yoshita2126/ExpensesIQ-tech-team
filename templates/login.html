@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - ExpensesIQ</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="auth-page">
+  <main class="auth-card clean-auth-card">
+    <div class="auth-logo stack-logo" aria-hidden="true">
+      <span></span><span></span><span></span>
+    </div>
+
+    <h1>Welcome Back</h1>
+    <p class="auth-subtitle">Login to your account</p>
+
+    <form method="post" class="clean-auth-form">
+      <label for="username">Username or Email</label>
+      <input id="username" name="username" placeholder="Enter your username or email" required>
+
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" placeholder="Enter your password" required>
+
+      <button type="submit">Login</button>
+    </form>
+
+    <div class="auth-divider"></div>
+    <nav class="auth-links" aria-label="Account links">
+      <a href="/">Create Account</a>
+      <span></span>
+      <a href="/forgot-password">Forgot Password?</a>
+    </nav>
+  </main>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account - ExpensesIQ</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="auth-page">
+  <main class="auth-card clean-auth-card register-card">
+    <div class="auth-logo stack-logo" aria-hidden="true">
+      <span></span><span></span><span></span>
+    </div>
+
+    <h1>Create Account</h1>
+    <p class="auth-subtitle">Register with username and Gmail</p>
+
+    <form method="post" class="clean-auth-form">
+      <label for="username">Username</label>
+      <input id="username" name="username" placeholder="Create your username" required>
+
+      <label for="email">Gmail Address</label>
+      <input id="email" name="email" type="email" pattern="[a-zA-Z0-9._%+-]+@gmail\.com" placeholder="Enter your Gmail address" required>
+
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" placeholder="Create a strong password" required>
+
+      <label for="confirm_password">Confirm Password</label>
+      <input id="confirm_password" name="confirm_password" type="password" placeholder="Confirm your password" required>
+
+      <label for="group_name">Business / Group Name</label>
+      <input id="group_name" name="group_name" placeholder="Enter business or group name" required>
+
+      <label for="role">Account Type</label>
+      <select id="role" name="role" required>
+        <option value="business">Business</option>
+        <option value="household">Household</option>
+      </select>
+
+      <button type="submit">Register</button>
+    </form>
+
+    <p class="auth-summary">AI analytics, accounting automation, billing, inventory, GST reports, multi-device access, multi-branch tracking, and real-time business reports.</p>
+
+    <div class="auth-divider"></div>
+    <nav class="auth-links single" aria-label="Account links">
+      <a href="/login">Already have an account?</a>
+    </nav>
+  </main>
+</body>
+</html>

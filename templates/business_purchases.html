@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Purchases - ExpensesIQ Business</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .page-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }
+    .btn-primary { background: #1976d2; color: white; border: 0; padding: 10px 18px; border-radius: 4px; cursor: pointer; width: auto; }
+    .modal { display: none; position: fixed; z-index: 2; inset: 0; background: rgba(15,23,42,0.45); overflow: auto; }
+    .modal-content { background: white; margin: 4% auto; padding: 22px; border-radius: 8px; width: 92%; max-width: 680px; }
+    .modal-close { float: right; font-size: 1.5em; cursor: pointer; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group label { display: block; font-weight: 700; margin-top: 10px; }
+    @media (max-width: 700px) { .form-row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="navbar">
+      <div class="nav-brand">ExpensesIQ - Purchases</div>
+      <div class="nav-links">
+        <a href="/business/dashboard">Dashboard</a>
+        <a href="/business/suppliers">Suppliers</a>
+        <a href="/business/inventory">Inventory</a>
+        <a href="/business/gst">GST</a>
+        <a href="/logout">Logout</a>
+      </div>
+    </nav>
+
+    <div class="page-header">
+      <h2>Purchase Orders</h2>
+      <button class="btn-primary" onclick="openModal()">Receive Stock</button>
+    </div>
+
+    {% if purchase_orders %}
+    <table>
+      <thead>
+        <tr>
+          <th>PO Number</th>
+          <th>Supplier</th>
+          <th>Order Date</th>
+          <th>Total</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in purchase_orders %}
+        <tr>
+          <td>{{ order.po_number }}</td>
+          <td>{{ order.supplier_name }}</td>
+          <td>{{ order.order_date }}</td>
+          <td>Rs. {{ "%.2f" | format(order.total_amount) }}</td>
+          <td>{{ order.status | title }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card">
+      <h2>No purchase orders yet</h2>
+      <p>Receive stock from suppliers to increase inventory and record input GST automatically.</p>
+    </div>
+    {% endif %}
+
+    <div id="purchaseModal" class="modal">
+      <div class="modal-content">
+        <span class="modal-close" onclick="closeModal()">&times;</span>
+        <h2>Receive Stock</h2>
+        <form onsubmit="createPurchase(event)">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Supplier *</label>
+              <select id="supplierId" required>
+                <option value="">Select supplier</option>
+                {% for supplier in suppliers %}
+                <option value="{{ supplier.id }}">{{ supplier.supplier_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Branch *</label>
+              <select id="branchId" required>
+                <option value="">Select branch</option>
+                {% for branch in branches %}
+                <option value="{{ branch.id }}">{{ branch.branch_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Product *</label>
+              <select id="productId" required>
+                <option value="">Select product</option>
+                {% for product in products %}
+                <option value="{{ product.id }}">{{ product.product_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Expected Delivery</label>
+              <input id="expectedDeliveryDate" type="date">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Quantity *</label>
+              <input id="quantity" type="number" min="0.01" step="0.01" required>
+            </div>
+            <div class="form-group">
+              <label>Purchase Unit Price *</label>
+              <input id="unitPrice" type="number" min="0" step="0.01" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Notes</label>
+            <input id="notes">
+          </div>
+          <button type="submit" class="btn-primary">Save Purchase</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openModal() { document.getElementById('purchaseModal').style.display = 'block'; }
+    function closeModal() { document.getElementById('purchaseModal').style.display = 'none'; }
+
+    async function createPurchase(event) {
+      event.preventDefault();
+      const data = {
+        supplier_id: document.getElementById('supplierId').value,
+        branch_id: document.getElementById('branchId').value,
+        product_id: document.getElementById('productId').value,
+        expected_delivery_date: document.getElementById('expectedDeliveryDate').value,
+        quantity: document.getElementById('quantity').value,
+        unit_price: document.getElementById('unitPrice').value,
+        notes: document.getElementById('notes').value
+      };
+      const response = await fetch('/business/api/create-purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (result.success) {
+        location.reload();
+      } else {
+        alert(result.error || 'Unable to create purchase');
+      }
+    }
+  </script>
+</body>
+</html>

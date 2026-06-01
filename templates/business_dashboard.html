@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Business Dashboard - ExpensesIQ</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .business-header { background: linear-gradient(135deg, #1976d2, #1565c0); color: white; padding: 30px; border-radius: 8px; margin-bottom: 30px; }
+    .business-header h1 { margin: 0 0 10px; }
+    .business-info { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; font-size: 0.9em; margin-top: 15px; }
+    .business-info div { background: rgba(255,255,255,0.2); padding: 10px; border-radius: 4px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 24px; }
+    .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 4px solid #1976d2; }
+    .stat-card h3 { margin: 0 0 10px; color: #666; font-size: 0.9em; }
+    .stat-value { font-size: 1.75em; color: #1976d2; font-weight: bold; overflow-wrap: anywhere; }
+    .quick-actions, .feature-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 30px; }
+    .action-btn, .feature-tile { background: white; border: 1px solid #ddd; padding: 15px; border-radius: 8px; text-decoration: none; color: #1976d2; }
+    .action-btn { text-align: center; transition: all 0.3s; }
+    .action-btn:hover { background: #f5f5f5; border-color: #1976d2; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .feature-tile strong { display: block; color: #0f172a; margin-bottom: 6px; }
+    .feature-tile span { color: #64748b; font-size: 0.9em; }
+    .dashboard-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+    .dashboard-panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow-x: auto; }
+    @media (max-width: 900px) {
+      .stats-grid, .business-info, .dashboard-columns { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 600px) {
+      .stats-grid, .business-info, .dashboard-columns { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="navbar">
+      <div class="nav-brand">ExpensesIQ - Business</div>
+      <div class="nav-links">
+        <a href="/business/dashboard">Dashboard</a>
+        <a href="/business/inventory">Inventory</a>
+        <a href="/business/invoices">Invoices</a>
+        <a href="/business/purchases">Purchases</a>
+        <a href="/business/gst">GST</a>
+        <a href="/dashboard">Personal</a>
+        <a href="/logout">Logout</a>
+      </div>
+    </nav>
+
+    <div class="business-header">
+      <h1>{{ business.business_name }}</h1>
+      <p>{{ business.business_type | title }} | GST ID: {{ business.gst_id }}</p>
+      <div class="business-info">
+        <div><strong>Address:</strong> {{ business.city }}, {{ business.state }}</div>
+        <div><strong>Phone:</strong> {{ business.phone }}</div>
+        <div><strong>Email:</strong> {{ business.email }}</div>
+        <div><strong>Branches:</strong> {{ branches | length }}</div>
+      </div>
+    </div>
+
+    <h2>Business Overview</h2>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <h3>Paid Revenue</h3>
+        <div class="stat-value">Rs. {{ "%.2f" | format(stats.total_revenue) }}</div>
+      </div>
+      <div class="stat-card">
+        <h3>Receivables</h3>
+        <div class="stat-value">Rs. {{ "%.2f" | format(stats.pending_amount) }}</div>
+      </div>
+      <div class="stat-card">
+        <h3>Purchases</h3>
+        <div class="stat-value">Rs. {{ "%.2f" | format(stats.purchase_total) }}</div>
+      </div>
+      <div class="stat-card">
+        <h3>GST Payable</h3>
+        <div class="stat-value">Rs. {{ "%.2f" | format(stats.gst_payable) }}</div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <h3>Total Products</h3>
+        <div class="stat-value">{{ stats.total_products }}</div>
+      </div>
+      <div class="stat-card">
+        <h3>Total Branches</h3>
+        <div class="stat-value">{{ stats.total_branches }}</div>
+      </div>
+      <div class="stat-card">
+        <h3>Low Stock Alerts</h3>
+        <div class="stat-value">{{ stats.low_stock_count }}</div>
+      </div>
+      <div class="stat-card">
+        <h3>Online Ready</h3>
+        <div class="stat-value">API</div>
+      </div>
+    </div>
+
+    <h2>Enabled Features</h2>
+    <div class="feature-strip">
+      <div class="feature-tile"><strong>Accounting Automation</strong><span>Sales and purchases update totals, tax, payments, and stock movement records.</span></div>
+      <div class="feature-tile"><strong>Sales Billing</strong><span>Create invoices, track unpaid bills, and mark payments received.</span></div>
+      <div class="feature-tile"><strong>Stock Management</strong><span>Branch-wise stock, reorder levels, sale deductions, and purchase additions.</span></div>
+      <div class="feature-tile"><strong>GST Reports</strong><span>Output GST, input GST, and net payable are calculated from transactions.</span></div>
+      <div class="feature-tile"><strong>Cloud & Mobile</strong><span>Responsive screens and JSON APIs support web and mobile clients.</span></div>
+    </div>
+
+    <h2>Quick Actions</h2>
+    <div class="quick-actions">
+      <a href="/business/products" class="action-btn">Products</a>
+      <a href="/business/inventory" class="action-btn">Inventory</a>
+      <a href="/business/suppliers" class="action-btn">Suppliers</a>
+      <a href="/business/branches" class="action-btn">Branches</a>
+      <a href="/business/invoices" class="action-btn">Invoices</a>
+      <a href="/business/purchases" class="action-btn">Purchases</a>
+      <a href="/business/gst" class="action-btn">GST Report</a>
+    </div>
+
+    <div class="dashboard-columns">
+      <div class="dashboard-panel">
+        <h2>Recent Invoices</h2>
+        {% if invoices %}
+        <table style="width: 100%;">
+          <tr>
+            <th style="text-align: left; padding: 10px;">Invoice</th>
+            <th style="text-align: left; padding: 10px;">Customer</th>
+            <th style="text-align: left; padding: 10px;">Total</th>
+            <th style="text-align: left; padding: 10px;">Status</th>
+          </tr>
+          {% for invoice in invoices %}
+          <tr>
+            <td style="padding: 10px;">{{ invoice.invoice_number }}</td>
+            <td style="padding: 10px;">{{ invoice.customer_name }}</td>
+            <td style="padding: 10px;">Rs. {{ "%.2f" | format(invoice.total_amount) }}</td>
+            <td style="padding: 10px;">{{ invoice.payment_status | title }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        {% else %}
+        <p>No invoices yet. <a href="/business/invoices">Create an invoice</a></p>
+        {% endif %}
+      </div>
+
+      <div class="dashboard-panel">
+        <h2>Recent Purchases</h2>
+        {% if purchase_orders %}
+        <table style="width: 100%;">
+          <tr>
+            <th style="text-align: left; padding: 10px;">PO</th>
+            <th style="text-align: left; padding: 10px;">Supplier</th>
+            <th style="text-align: left; padding: 10px;">Total</th>
+            <th style="text-align: left; padding: 10px;">Status</th>
+          </tr>
+          {% for order in purchase_orders %}
+          <tr>
+            <td style="padding: 10px;">{{ order.po_number }}</td>
+            <td style="padding: 10px;">{{ order.supplier_name }}</td>
+            <td style="padding: 10px;">Rs. {{ "%.2f" | format(order.total_amount) }}</td>
+            <td style="padding: 10px;">{{ order.status | title }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        {% else %}
+        <p>No purchases yet. <a href="/business/purchases">Receive stock</a></p>
+        {% endif %}
+      </div>
+    </div>
+
+    <h2>Recent Branches</h2>
+    <div class="dashboard-panel">
+      {% if branches %}
+      <table style="width: 100%;">
+        <tr>
+          <th style="text-align: left; padding: 10px;">Branch Name</th>
+          <th style="text-align: left; padding: 10px;">City</th>
+          <th style="text-align: left; padding: 10px;">Phone</th>
+          <th style="text-align: left; padding: 10px;">Status</th>
+        </tr>
+        {% for branch in branches %}
+        <tr>
+          <td style="padding: 10px;">{{ branch.branch_name }}</td>
+          <td style="padding: 10px;">{{ branch.city }}</td>
+          <td style="padding: 10px;">{{ branch.phone }}</td>
+          <td style="padding: 10px;"><span class="badge badge-success">{{ branch.status | title }}</span></td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+      <p>No branches created yet. <a href="/business/branches">Create a branch</a></p>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>
