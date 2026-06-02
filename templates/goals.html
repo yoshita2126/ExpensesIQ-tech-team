@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Goals - ExpensesIQ{% endblock %}
+{% block page_title %}Goals{% endblock %}
+
+{% block content %}
+<div class="dashboard-section">
+  <div class="card list-card">
+    <div class="card-header">
+      <h2 class="card-title">Goals</h2>
+    </div>
+    {% if goals %}
+    <div class="list-row">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Goal Progress</h3>
+        </div>
+        <div class="chart-container">
+          <canvas id="goalsChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Update Goals</h3>
+        </div>
+        <div class="goal-list">
+          {% for goal in goals %}
+          <div class="card" style="margin-bottom: 20px; padding: 16px; border: 1px solid var(--color-border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <h4 style="margin: 0; color: var(--color-text);">{{ goal.title }}</h4>
+              <button class="btn btn-small" onclick="estimateDailySavings({{ goal.id }}, '{{ goal.title }}', {{ goal.target }}, {{ goal.saved }}, '{{ goal.due_date }}')" style="background-color: #8B5CF6; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
+                🤖 AI Suggest
+              </button>
+            </div>
+            
+            <form method="post" class="dashboard-form">
+              <input type="hidden" name="goal_id" value="{{ goal.id }}">
+              <div class="form-group">
+                <label class="form-label">Title</label>
+                <input class="form-input" name="title" type="text" value="{{ goal.title }}" disabled>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Target Amount</label>
+                <input class="form-input" name="target" type="number" step="0.01" value="{{ goal.target }}" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Current Savings</label>
+                <input class="form-input" name="saved" type="number" step="0.01" value="{{ goal.saved }}" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Target Date</label>
+                <input class="form-input" name="due_date" type="date" value="{{ goal.due_date }}" required>
+              </div>
+              
+              <!-- AI Recommendation Display -->
+              <div id="recommendation-{{ goal.id }}" style="display: none; margin: 16px 0; padding: 12px; background-color: #F3E8FF; border-left: 4px solid #8B5CF6; border-radius: 4px;">
+                <div style="font-weight: 600; color: #8B5CF6; margin-bottom: 8px;">💡 AI Recommendation</div>
+                <div id="rec-daily-{{ goal.id }}" style="margin-bottom: 8px; color: #333;"></div>
+                <div id="rec-tips-{{ goal.id }}" style="margin-bottom: 8px; color: #555; font-size: 0.9rem;"></div>
+                <div id="rec-summary-{{ goal.id }}" style="color: #555; font-size: 0.9rem; margin-bottom: 8px;"></div>
+                <div id="rec-loading-{{ goal.id }}" style="text-align: center; margin: 10px 0;">
+                  <span style="color: #8B5CF6;">Loading AI recommendation...</span>
+                </div>
+              </div>
+              
+              <button class="btn btn-primary btn-full" type="submit">Update Goal</button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding: 40px; text-align: center;">
+      <div class="empty-icon" style="font-size: 36px; margin-bottom: 16px;">🎯</div>
+      <p style="font-size: 1.1rem; font-weight: 600; margin-bottom: 8px;">No goals found</p>
+      <p style="color: var(--color-text-lighter);">Create a savings goal to track progress and visualize it here.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  async function estimateDailySavings(goalId, goalTitle, targetAmount, currentSaved, dueDate) {
+    const recDiv = document.getElementById(`recommendation-${goalId}`);
+    const loadingDiv = document.getElementById(`rec-loading-${goalId}`);
+    
+    // Show recommendation section and loading
+    recDiv.style.display = 'block';
+    loadingDiv.style.display = 'block';
+    
+    try {
+      const response = await fetch('/api/goals/estimate-daily-amount', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          goal_title: goalTitle,
+          target_amount: targetAmount,
+          current_saved: currentSaved,
+          due_date: dueDate,
+          include_expense_context: true
+        })
+      });
+      
+      const data = await response.json();
+      
+      // Hide loading
+      loadingDiv.style.display = 'none';
+      
+      if (data.success) {
+        // Display daily amount
+        const dailyDiv = document.getElementById(`rec-daily-${goalId}`);
+        dailyDiv.innerHTML = `<strong>Daily Saving Target:</strong> ₹${data.daily_amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        
+        // Display tips if available
+        if (data.tips && data.tips.length > 0) {
+          const tipsDiv = document.getElementById(`rec-tips-${goalId}`);
+          const tipsList = data.tips.map(tip => `• ${tip}`).join('<br>');
+          tipsDiv.innerHTML = `<strong>Tips:</strong><br>${tipsList}`;
+        }
+        
+        // Display summary
+        if (data.recommendation) {
+          const summaryDiv = document.getElementById(`rec-summary-${goalId}`);
+          summaryDiv.innerHTML = `<strong>Recommendation:</strong> ${data.recommendation}`;
+        }
+        
+        // Show days remaining
+        if (data.days_remaining) {
+          const daysDiv = document.getElementById(`rec-summary-${goalId}`);
+          daysDiv.innerHTML += `<br><small>Days remaining: ${data.days_remaining}</small>`;
+        }
+      } else {
+        const dailyDiv = document.getElementById(`rec-daily-${goalId}`);
+        dailyDiv.innerHTML = `<span style="color: #DC2626;">Error: ${data.error}</span>`;
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      loadingDiv.style.display = 'none';
+      const dailyDiv = document.getElementById(`rec-daily-${goalId}`);
+      dailyDiv.innerHTML = `<span style="color: #DC2626;">Failed to get recommendation. Please try again.</span>`;
+    }
+  }
+</script>
+
+{% if goals %}
+<script>
+  const goalLabels = {{ goals|map(attribute='title')|list|tojson }};
+  const savedValues = {{ goals|map(attribute='saved')|list|tojson }};
+  const targetValues = {{ goals|map(attribute='target')|list|tojson }};
+  const goalsCtx = document.getElementById('goalsChart');
+
+  if (goalsCtx) {
+    new Chart(goalsCtx, {
+      type: 'bar',
+      data: {
+        labels: goalLabels,
+        datasets: [
+          {
+            label: 'Saved',
+            data: savedValues,
+            backgroundColor: 'rgba(59, 130, 246, 0.8)',
+            borderColor: 'rgba(37, 99, 235, 1)',
+            borderWidth: 1,
+            borderRadius: 10,
+          },
+          {
+            label: 'Target',
+            data: targetValues,
+            backgroundColor: 'rgba(16, 185, 129, 0.4)',
+            borderColor: 'rgba(5, 150, 105, 1)',
+            borderWidth: 1,
+            borderRadius: 10,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return context.dataset.label + ': ₹' + context.parsed.y.toLocaleString();
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return '₹' + value.toLocaleString();
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+</script>
+{% endif %}
+{% endblock %}

@@ -25,23 +25,24 @@
           <option value="expense" {% if transaction.type == 'expense' %}selected{% endif %}>Expense</option>
           <option value="income" {% if transaction.type == 'income' %}selected{% endif %}>Income</option>
         </select>
-        <input name="amount" type="number" step="0.01" placeholder="Amount" value="{{transaction.amount}}" required>
+        <input name="amount" type="number" step="0.01" placeholder="Amount" value="{{ transaction.amount }}" required>
+
+        {% set business_categories = ['Business','Analytics','Payments','Revenue','Bills','Office','Travel','Inventory','Payroll'] %}
+        {% set household_categories = ['Food','Groceries','Transportation','Healthcare','Education','Rent','Utilities','Insurance','Entertainment','Dining','Shopping','Travel','Investment','Salary','Bonus','Freelance','Other'] %}
+        {% set categories = business_categories if role == 'business' else household_categories %}
+
         <select name="category" id="edit-category-select" required>
-          <option value="" disabled {% if transaction.category in ['','Other'] and transaction.category not in ['Office Expenses','Salaries & Wages','Transportation & Delivery','Utilities','Rent & Maintenance','Inventory/Purchases','Marketing & Advertising','Software & Tools','Taxes & Fees','Maintenance & Repairs'] %}selected{% endif %}>Select category</option>
-          <option value="Office Expenses" {% if transaction.category == 'Office Expenses' %}selected{% endif %}>🧾 Office Expenses</option>
-          <option value="Salaries & Wages" {% if transaction.category == 'Salaries & Wages' %}selected{% endif %}>👨‍💼 Salaries & Wages</option>
-          <option value="Transportation & Delivery" {% if transaction.category == 'Transportation & Delivery' %}selected{% endif %}>🚚 Transportation & Delivery</option>
-          <option value="Utilities" {% if transaction.category == 'Utilities' %}selected{% endif %}>💡 Utilities</option>
-          <option value="Rent & Maintenance" {% if transaction.category == 'Rent & Maintenance' %}selected{% endif %}>🏢 Rent & Maintenance</option>
-          <option value="Inventory/Purchases" {% if transaction.category == 'Inventory/Purchases' %}selected{% endif %}>📦 Inventory/Purchases</option>
-          <option value="Marketing & Advertising" {% if transaction.category == 'Marketing & Advertising' %}selected{% endif %}>📢 Marketing & Advertising</option>
-          <option value="Software & Tools" {% if transaction.category == 'Software & Tools' %}selected{% endif %}>💻 Software & Tools</option>
-          <option value="Taxes & Fees" {% if transaction.category == 'Taxes & Fees' %}selected{% endif %}>🏦 Taxes & Fees</option>
-          <option value="Maintenance & Repairs" {% if transaction.category == 'Maintenance & Repairs' %}selected{% endif %}>🔧 Maintenance & Repairs</option>
-          <option value="Other" {% if transaction.category not in ['Office Expenses','Salaries & Wages','Transportation & Delivery','Utilities','Rent & Maintenance','Inventory/Purchases','Marketing & Advertising','Software & Tools','Taxes & Fees','Maintenance & Repairs'] %}selected{% endif %}>Other</option>
+          <option value="" disabled {% if transaction.category not in categories %}selected{% endif %}>Select category</option>
+          {% for category in categories %}
+          <option value="{{ category }}" {% if transaction.category == category %}selected{% endif %}>{{ category }}</option>
+          {% endfor %}
         </select>
-        <input name="category_other" id="edit-category-other" type="text" placeholder="Type a custom category" value="{% if transaction.category not in ['Office Expenses','Salaries & Wages','Transportation & Delivery','Utilities','Rent & Maintenance','Inventory/Purchases','Marketing & Advertising','Software & Tools','Taxes & Fees','Maintenance & Repairs'] %}{{transaction.category}}{% endif %}" style="display:none;">
-        <input name="note" placeholder="Note (optional)" value="{{transaction.note}}">
+
+        {% if role != 'business' %}
+        <input name="category_other" id="edit-category-other" type="text" placeholder="Type a custom category" value="{% if transaction.category not in categories %}{{ transaction.category }}{% endif %}" style="display:none;">
+        {% endif %}
+
+        <input name="note" placeholder="Note (optional)" value="{{ transaction.note }}">
         <button type="submit">Save Changes</button>
       </form>
     </div>

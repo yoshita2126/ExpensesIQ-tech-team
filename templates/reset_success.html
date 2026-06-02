@@ -7,11 +7,23 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body class="auth-page">
-  <main class="auth-card clean-auth-card">
-    <div class="auth-logo check-logo" aria-hidden="true"></div>
-    <h1>Password Reset</h1>
-    <p class="auth-subtitle">Your password has been updated successfully.</p>
-    <a class="auth-primary-link" href="/login">Go to Login</a>
-  </main>
+  <div class="auth-cards-center">
+    <div class="success-card">
+      <div class="card-icon success-icon">✓</div>
+      
+      <h1>Password Reset Successful!</h1>
+      <p class="card-subtitle">Your password has been updated successfully. You can now log in with your new password.</p>
+
+      <div class="success-message" style="text-align: center; margin: 20px 0;">
+        <p style="font-size: 14px; color: #059669; margin: 0;">✓ Your account is now secure</p>
+      </div>
+
+      <div style="text-align: center;">
+        <a href="/login" class="form-btn primary" style="display: inline-block; width: auto; padding: 12px 32px; text-decoration: none;">
+          Go to Login
+        </a>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

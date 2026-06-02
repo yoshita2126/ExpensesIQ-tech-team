@@ -1,6 +1,7 @@
 Flask>=2.0
 Werkzeug>=2.0
 reportlab>=3.6
+openpyxl>=3.0
 
 # Optional / future features
 # requests
@@ -12,6 +13,8 @@ python-dotenv
 requests
 # PyJWT for JWT auth
 PyJWT
+# Twilio for SMS OTP
+twilio
 # pyjwt
 # sqlalchemy
 # scikit-learn

@@ -1,0 +1,152 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Calendar - {{ month_name }} {{ year }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+      .calendar-page { width: 100%; max-width: 1140px; margin: 0 auto; }
+      .calendar-panel { width: 100%; }
+      .calendar-nav { width: 100%; }
+      .calendar-cell { display: grid; gap: 8px; }
+      .day-label { font-size: 0.82rem; color: #64748b; }
+      .expense-count { font-size: 0.82rem; color: #64748b; }
+      .empty-note { font-size: 0.82rem; color: #94a3b8; }
+    </style>
+  </head>
+  <body class="dashboard-page">
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">💰</div>
+        <span class="logo-text">ExpensesIQ</span>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="{{ url_for('dashboard') }}" class="nav-item">
+          <span class="nav-icon">📊</span>
+          <span class="nav-text">Dashboard</span>
+        </a>
+        <a href="{{ url_for('transactions_page') }}" class="nav-item">
+          <span class="nav-icon">💳</span>
+          <span class="nav-text">Transactions</span>
+        </a>
+        <a href="{{ url_for('budgets') }}" class="nav-item">
+          <span class="nav-icon">🎯</span>
+          <span class="nav-text">Budgets</span>
+        </a>
+        <a href="{{ url_for('goals_page') }}" class="nav-item">
+          <span class="nav-icon">🎪</span>
+          <span class="nav-text">Goals</span>
+        </a>
+        <a href="{{ url_for('calendar_page') }}" class="nav-item active">
+          <span class="nav-icon">📅</span>
+          <span class="nav-text">Calendar</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="dropdown-menu" id="settingsMenu">
+          <button class="dropdown-toggle">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-text">Settings</span>
+          </button>
+          <div class="dropdown-content">
+            <a href="{{ url_for('profile') }}">
+              <span>👤</span>
+              <span>Profile</span>
+            </a>
+            <a href="{{ url_for('preferences') }}">
+              <span>🔔</span>
+              <span>Preferences</span>
+            </a>
+            <a href="{{ url_for('help_support') }}">
+              <span>❓</span>
+              <span>Help & Support</span>
+            </a>
+            <a href="/logout" style="border-top: 1px solid rgba(255,255,255,0.1); color: #ef4444;">
+              <span>🚪</span>
+              <span>Logout</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="dashboard-main">
+      <header class="dashboard-header">
+        <div class="header-left">
+          <h1>Calendar</h1>
+          <span class="header-subtitle">{{ month_name }} {{ year }}</span>
+        </div>
+      </header>
+
+      <section class="dashboard-content calendar-page">
+        <div class="calendar-panel">
+          <div class="calendar-nav">
+            <a href="{{ url_for('calendar_page') }}?year={{ prev_year }}&month={{ prev_month }}">← {{ calendar.month_name[prev_month] }}</a>
+            <div><strong>{{ month_name }} {{ year }}</strong></div>
+            <a href="{{ url_for('calendar_page') }}?year={{ next_year }}&month={{ next_month }}">{{ calendar.month_name[next_month] }} →</a>
+          </div>
+
+          <table class="calendar-table">
+          <thead>
+            <tr>
+              <th>Sun</th>
+              <th>Mon</th>
+              <th>Tue</th>
+              <th>Wed</th>
+              <th>Thu</th>
+              <th>Fri</th>
+              <th>Sat</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set first_weekday = namespace(val=(date(year, month, 1).weekday() + 1) % 7) %}
+            {% set current = namespace(val=1 - first_weekday.val) %}
+            {% for week in range(6) %}
+              <tr>
+                {% for dow in range(7) %}
+                  {% if current.val < 1 or current.val > days_in_month %}
+                    <td></td>
+                  {% else %}
+                    {% set info = day_info.get(current.val, {'total': 0.0, 'count': 0}) %}
+                    <td>
+                      <div class="day-number">{{ current.val }}</div>
+                      <div style="font-size: 0.9rem; color:#475569;">{{ date(year, month, current.val).isoformat() }}</div>
+                      {% if info.total and info.total > 0 %}
+                        <div class="amount">₹{{ '%.2f'|format(info.total) }}</div>
+                        <div class="expense-count">{{ info.count }} transaction{{ 's' if info.count != 1 else '' }}</div>
+                        <a class="view-link" href="{{ url_for('transactions_page') }}?date={{ date(year,month,current.val).isoformat() }}">View</a>
+                      {% else %}
+                        <div class="empty-note">No expenses</div>
+                      {% endif %}
+                    </td>
+                  {% endif %}
+                  {% set current.val = current.val + 1 %}
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+    </main>
+    <script>
+      // Settings dropdown menu toggle
+      const settingsMenu = document.getElementById('settingsMenu');
+      const dropdownToggle = settingsMenu.querySelector('.dropdown-toggle');
+      
+      if (dropdownToggle) {
+        dropdownToggle.addEventListener('click', function(e) {
+          e.preventDefault();
+          settingsMenu.classList.toggle('active');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+          if (!settingsMenu.contains(e.target)) {
+            settingsMenu.classList.remove('active');
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

@@ -3,45 +3,35 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Verify OTP - Expense Tracker</title>
+  <title>Verify OTP - ExpensesIQ</title>
   <link rel="stylesheet" href="/static/style.css">
-  <style>
-    .error-msg {
-      color: #d32f2f;
-      background-color: #ffebee;
-      padding: 10px;
-      border-radius: 4px;
-      margin-bottom: 15px;
-      border-left: 4px solid #d32f2f;
-    }
-    .info-msg {
-      color: #1976d2;
-      background-color: #e3f2fd;
-      padding: 10px;
-      border-radius: 4px;
-      margin-bottom: 15px;
-      border-left: 4px solid #1976d2;
-    }
-  </style>
 </head>
 <body class="auth-page">
-  <div class="auth-card">
-    <h2>Verify OTP</h2>
-    <p class="form-note">An OTP has been sent to your email. Enter it below.</p>
-    
-    <div class="info-msg">
-      Email: <strong>{{ email }}</strong><br>
-      <small>OTP is valid for 10 minutes</small>
+  <div class="auth-cards-center">
+    <div class="verify-otp-card">
+      <div class="card-icon verify-icon">✉️</div>
+      
+      <h1>Verify OTP</h1>
+      <p class="card-subtitle">Enter the 6-digit code sent to your email to verify your account</p>
+
+      {% if error %}
+      <div class="error-message">{{ error }}</div>
+      {% endif %}
+
+      <form method="post" class="password-form">
+        <div class="form-group">
+          <label for="otp">One-Time Password (OTP)</label>
+          <input id="otp" name="otp" type="text" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="000000" required>
+          <small>OTP is valid for 10 minutes</small>
+        </div>
+
+        <button type="submit" class="form-btn primary">Verify OTP</button>
+      </form>
+
+      <div class="form-footer">
+        <p><a href="/forgot-password">Back to Forgot Password</a></p>
+      </div>
     </div>
-    {% if error %}
-    <div class="error-msg">{{ error }}</div>
-    {% endif %}
-    
-    <form method="post">
-      <input name="otp" placeholder="Enter 6-digit OTP" maxlength="6" pattern="[0-9]{6}" required>
-      <button type="submit">Verify OTP</button>
-    </form>
-    <p><a href="/forgot-password">Back to Forgot Password</a></p>
   </div>
 </body>
 </html>

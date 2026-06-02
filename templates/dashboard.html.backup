@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ExpensesIQ Dashboard</title>
+  <title>Expense Tracker Dashboard</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -78,7 +78,6 @@
         <div class="alert-banner">{{alert}}</div>
       {% endif %}
 
-      <!-- Date Filter Form -->
       <form method="get" class="date-range-form">
         <label>From
           <input type="date" name="date_from" value="{{filter_from}}">
@@ -90,11 +89,11 @@
         <a href="/dashboard" class="form-btn button-secondary" style="text-decoration:none;">Reset</a>
       </form>
 
-      <!-- Summary Cards Grid with Modern Design -->
+      <!-- Summary Cards Grid with Icons -->
       <div class="metrics-grid">
         <div class="metric-card">
           <div class="metric-top-bar"></div>
-          <div class="metric-icon-wrapper" style="background: linear-gradient(135deg, #fecaca, #fed7aa);">
+          <div class="metric-icon-wrapper">
             <span class="metric-icon">📉</span>
           </div>
           <div class="metric-header">
@@ -129,9 +128,8 @@
         </div>
       </div>
 
-      <!-- Quick Actions Grid (3 columns) -->
+      <!-- Quick Actions -->
       <div class="dashboard-grid three-column">
-        <!-- Add Transaction Card -->
         <div class="dashboard-card">
           <div class="card-header">
             <h2>Add Transaction</h2>
@@ -176,7 +174,6 @@
           </form>
         </div>
 
-        <!-- Set Goal Card -->
         <div class="dashboard-card">
           <div class="card-header">
             <h2>Set Goal</h2>
@@ -199,7 +196,6 @@
           </form>
         </div>
 
-        <!-- Your Daily Limit Card -->
         <div class="dashboard-card">
           <div class="card-header">
             <h2>Your Daily Limit</h2>
@@ -215,24 +211,7 @@
         </div>
       </div>
 
-      <!-- Category Insights Section -->
-      <div class="dashboard-card">
-        <div class="card-header">
-          <h2>Category Insights</h2>
-        </div>
-        <div class="category-insights">
-          <div style="display: flex; gap: 24px;">
-            <label>From
-              <input type="date" id="insights_from" style="margin-left: 8px;">
-            </label>
-            <label>To
-              <input type="date" id="insights_to" style="margin-left: 8px;">
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <!-- Main Grid with Charts (2 columns) -->
+      <!-- Main Grid with Charts -->
       <div class="dashboard-grid">
         <!-- Expense Overview Chart -->
         <div class="dashboard-card">
@@ -261,13 +240,13 @@
         </div>
       </div>
 
-      <!-- Recent Transactions and Top Categories (2 columns) -->
+      <!-- Bottom Grid -->
       <div class="dashboard-grid">
         <!-- Recent Transactions -->
         <div class="dashboard-card">
           <div class="card-header">
             <h2>Recent Transactions</h2>
-            <a href="{{ url_for('transactions_page') }}" class="view-link">View All</a>
+            <a href="#" class="view-link">View All Transactions</a>
           </div>
           <div class="transactions-list">
             {% if transactions %}
@@ -293,6 +272,7 @@
         <div class="dashboard-card">
           <div class="card-header">
             <h2>Top Categories</h2>
+            <a href="#" class="view-link">View All</a>
           </div>
           <div class="categories-list">
             {% if category_data %}
@@ -314,60 +294,137 @@
                 </div>
               {% endfor %}
             {% else %}
-              <p class="empty-state">No category data</p>
+              <p class="empty-state">No category data yet</p>
             {% endif %}
           </div>
         </div>
       </div>
     </section>
+
   </main>
 
   <script>
-    // Chart initialization code
-    {% if chart_data %}
-    const ctx = document.getElementById('categoryChart');
-    if (ctx) {
-      new Chart(ctx, {
-        type: 'pie',
-        data: {{chart_data|safe}},
+    // Render category pie chart
+    let categoryData;
+    try {
+      categoryData = {{ category_data|default([])|tojson }} || [];
+    } catch (e) {
+      categoryData = [];
+    }
+
+    // Build labels and colors; include type in label and color by type
+    const labels = categoryData.map(i => `${i.category} (${i.type || 'expense'})`);
+    const data = categoryData.map(i => i.amount);
+    const colors = categoryData.map((i, idx) => {
+      if ((i.type || 'expense').toLowerCase() === 'income') return '#10b981';
+      if ((i.type || 'expense').toLowerCase() === 'expense') return '#ef4444';
+      return `hsl(${idx * 45}, 70%, 50%)`;
+    });
+
+    const categoryCtx = document.getElementById('categoryChart');
+    if (categoryCtx && labels.length) {
+      new Chart(categoryCtx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: colors,
+            borderColor: '#fff',
+            borderWidth: 2,
+          }]
+        },
         options: {
           responsive: true,
           maintainAspectRatio: true,
           plugins: {
-            legend: { position: 'bottom' }
+            legend: { 
+              position: 'bottom',
+              labels: { color: '#64748b', padding: 15 }
+            }
           }
         }
       });
     }
-    {% endif %}
 
-    {% if trends_data %}
+    // Render trends line chart using server-provided data
     const trendsCtx = document.getElementById('trendsChart');
-    if (trendsCtx) {
-      new Chart(trendsCtx, {
-        type: 'line',
-        data: {{trends_data|safe}},
-        options: {
-          responsive: true,
-          maintainAspectRatio: true,
-          plugins: {
-            legend: { display: false }
-          },
-          scales: {
-            y: { beginAtZero: true }
-          }
-        }
-      });
-    }
-    {% endif %}
+    try {
+      const trendsLabels = {{ trends_labels|tojson|safe }} || [];
+      const trendsIncome = {{ trends_income|tojson|safe }} || [];
+      const trendsExpenses = {{ trends_expenses|tojson|safe }} || [];
 
-    // Settings dropdown toggle
+      if (trendsCtx && trendsLabels.length) {
+        new Chart(trendsCtx, {
+          type: 'line',
+          data: {
+            labels: trendsLabels,
+            datasets: [
+              {
+                label: 'Income',
+                data: trendsIncome,
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                tension: 0.4,
+                fill: true,
+                borderWidth: 3,
+                pointRadius: 4,
+                pointBackgroundColor: '#10b981'
+              },
+              {
+                label: 'Expenses',
+                data: trendsExpenses,
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                tension: 0.4,
+                fill: true,
+                borderWidth: 3,
+                pointRadius: 4,
+                pointBackgroundColor: '#ef4444'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: { color: '#64748b' },
+                grid: { color: 'rgba(0,0,0,0.05)' }
+              },
+              x: {
+                ticks: { color: '#64748b' },
+                grid: { display: false }
+              }
+            },
+            plugins: {
+              legend: { 
+                labels: { color: '#64748b', usePointStyle: true, padding: 15 }
+              }
+            }
+          }
+        });
+      }
+    } catch (e) {
+      console.error('Failed to render trends chart', e);
+    }
+    
+    // Settings dropdown menu toggle
     const settingsMenu = document.getElementById('settingsMenu');
-    if (settingsMenu) {
-      const toggle = settingsMenu.querySelector('.dropdown-toggle');
-      toggle.addEventListener('click', function(e) {
-        e.stopPropagation();
+    const dropdownToggle = settingsMenu.querySelector('.dropdown-toggle');
+    
+    if (dropdownToggle) {
+      dropdownToggle.addEventListener('click', function(e) {
+        e.preventDefault();
         settingsMenu.classList.toggle('active');
+      });
+      
+      // Close dropdown when clicking outside
+      document.addEventListener('click', function(e) {
+        if (!settingsMenu.contains(e.target)) {
+          settingsMenu.classList.remove('active');
+        }
       });
     }
   </script>

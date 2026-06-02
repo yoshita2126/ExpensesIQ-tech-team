@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}ExpensesIQ - Expense Tracker{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style_redesign.css') }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="dark-mode">
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">💰</span>
+          <span class="logo-text">ExpensesIQ</span>
+        </div>
+        <button class="sidebar-toggle" id="sidebarToggle">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">Dashboard</span>
+        </a>
+        <a href="{{ url_for('transactions_page') }}" class="nav-link {% if request.endpoint == 'transactions_page' %}active{% endif %}">
+          <span class="nav-icon">💳</span>
+          <span class="nav-label">Transactions</span>
+        </a>
+        <a href="{{ url_for('budgets') }}" class="nav-link {% if request.endpoint == 'budgets' %}active{% endif %}">
+          <span class="nav-icon">💰</span>
+          <span class="nav-label">Budgets</span>
+        </a>
+        <a href="{{ url_for('goals_page') }}" class="nav-link {% if request.endpoint == 'goals_page' %}active{% endif %}">
+          <span class="nav-icon">🎯</span>
+          <span class="nav-label">Goals</span>
+        </a>
+        <a href="{{ url_for('calendar_page') }}" class="nav-link {% if request.endpoint == 'calendar_page' %}active{% endif %}">
+          <span class="nav-icon">📅</span>
+          <span class="nav-label">Calendar</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="theme-toggle" id="themeToggle" title="Toggle dark mode">
+          <span class="theme-icon">🌙</span>
+        </button>
+        <a href="{{ url_for('logout') }}" class="logout-link">
+          <span class="nav-icon">🚪</span>
+          <span class="nav-label">Logout</span>
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Top Header -->
+      <header class="top-header">
+        <div class="header-left">
+          <button class="sidebar-mobile-toggle" id="sidebarMobileToggle">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+          <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+        </div>
+
+        <div class="header-right">
+          <div class="user-menu">
+            <span class="user-avatar">{{ session.get('user', 'U')[0].upper() }}</span>
+            <span class="user-name">{{ session.get('user', 'User') }}</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <section class="content">
+        {% block content %}{% endblock %}
+      </section>
+    </main>
+  </div>
+
+  <!-- Mobile Overlay -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <script>
+    // Sidebar Toggle
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebarMobileToggle = document.getElementById('sidebarMobileToggle');
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+
+    if (sidebarToggle) {
+      sidebarToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+      });
+    }
+
+    if (sidebarMobileToggle) {
+      sidebarMobileToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('mobile-open');
+        overlay.classList.toggle('active');
+      });
+    }
+
+    if (overlay) {
+      overlay.addEventListener('click', () => {
+        sidebar.classList.remove('mobile-open');
+        overlay.classList.remove('active');
+      });
+    }
+
+    // Theme Toggle
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+      });
+
+      // Load saved theme
+      if (localStorage.getItem('theme') === 'dark') {
+        document.body.classList.add('dark-mode');
+      }
+    }
+  </script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

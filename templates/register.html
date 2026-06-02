@@ -7,45 +7,69 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body class="auth-page">
-  <main class="auth-card clean-auth-card register-card">
-    <div class="auth-logo stack-logo" aria-hidden="true">
-      <span></span><span></span><span></span>
+  <div class="auth-container">
+    <div class="auth-left register-left">
+      <div class="auth-illustration register-illust">
+        <div class="checkmark-badge">✓</div>
+      </div>
+      <h2>Create Your Account</h2>
+      <p>Start your journey towards better financial management today.</p>
+      <div class="features-list">
+        <div class="feature-item">✓ Track expenses</div>
+        <div class="feature-item">✓ Set budgets</div>
+        <div class="feature-item">✓ Get insights</div>
+        <div class="feature-item">✓ Reach goals</div>
+      </div>
     </div>
 
-    <h1>Create Account</h1>
-    <p class="auth-subtitle">Register with username and Gmail</p>
+    <div class="auth-right">
+      <div class="auth-card register-card">
+        <div class="auth-logo">ExpensesIQ</div>
+        <h1>Create Account</h1>
 
-    <form method="post" class="clean-auth-form">
-      <label for="username">Username</label>
-      <input id="username" name="username" placeholder="Create your username" required>
+        <form method="post" class="auth-form">
+          <div class="form-group">
+            <label for="username">Full Name</label>
+            <input id="username" name="username" placeholder="Enter your full name" required>
+          </div>
 
-      <label for="email">Gmail Address</label>
-      <input id="email" name="email" type="email" pattern="[a-zA-Z0-9._%+-]+@gmail\.com" placeholder="Enter your Gmail address" required>
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <input id="email" name="email" type="email" placeholder="Enter your email" required>
+          </div>
 
-      <label for="password">Password</label>
-      <input id="password" name="password" type="password" placeholder="Create a strong password" required>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" placeholder="Create a strong password" required>
+          </div>
 
-      <label for="confirm_password">Confirm Password</label>
-      <input id="confirm_password" name="confirm_password" type="password" placeholder="Confirm your password" required>
+          <div class="form-group">
+            <label for="confirm_password">Confirm Password</label>
+            <input id="confirm_password" name="confirm_password" type="password" placeholder="Confirm your password" required>
+          </div>
 
-      <label for="group_name">Business / Group Name</label>
-      <input id="group_name" name="group_name" placeholder="Enter business or group name" required>
+          <div class="form-group">
+            <label for="group_name">Business / Group Name</label>
+            <input id="group_name" name="group_name" placeholder="Enter business or group name" required>
+          </div>
 
-      <label for="role">Account Type</label>
-      <select id="role" name="role" required>
-        <option value="business">Business</option>
-        <option value="household">Household</option>
-      </select>
+          <div class="form-group">
+            <label for="role">Account Type</label>
+            <select id="role" name="role" required>
+              <option value="" disabled selected>Select account type</option>
+              <option value="business">Business</option>
+              <option value="household">Household</option>
+            </select>
+          </div>
 
-      <button type="submit">Register</button>
-    </form>
+          <button type="submit" class="auth-btn">Create Account</button>
+        </form>
 
-    <p class="auth-summary">AI analytics, accounting automation, billing, inventory, GST reports, multi-device access, multi-branch tracking, and real-time business reports.</p>
-
-    <div class="auth-divider"></div>
-    <nav class="auth-links single" aria-label="Account links">
-      <a href="/login">Already have an account?</a>
-    </nav>
-  </main>
+        <div class="auth-footer">
+          <p>Already have an account? <a href="/login">Sign In</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

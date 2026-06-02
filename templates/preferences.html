@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preferences - Expense Tracker</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .preferences-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .pref-section {
+      background: var(--surface);
+      border-radius: 26px;
+      padding: 28px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: var(--text);
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+    }
+    .pref-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      background: var(--surface-soft);
+      border-radius: 16px;
+      margin-bottom: 12px;
+      transition: all 0.2s ease;
+    }
+    .pref-item:hover {
+      background: var(--primary-soft);
+    }
+    .pref-info {
+      flex: 1;
+    }
+    .pref-label {
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .pref-desc {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .toggle-switch {
+      position: relative;
+      width: 50px;
+      height: 28px;
+      background: #cbd5e1;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      border: none;
+      padding: 0;
+    }
+    .toggle-switch.active {
+      background: var(--success);
+    }
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 24px;
+      height: 24px;
+      background: white;
+      border-radius: 50%;
+      transition: left 0.3s ease;
+    }
+    .toggle-switch.active::after {
+      left: 24px;
+    }
+    .select-pref {
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: white;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    .select-pref:hover {
+      border-color: var(--primary);
+    }
+    .button-group {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 24px;
+    }
+    .btn-primary,
+    .btn-secondary {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 0.95rem;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+    .btn-primary:hover {
+      background: var(--primary-strong);
+    }
+    .btn-secondary {
+      background: var(--border);
+      color: var(--text);
+    }
+    .btn-secondary:hover {
+      background: var(--primary-soft);
+    }
+    .alert-box {
+      background: rgba(34,197,94,0.1);
+      border: 1px solid var(--success);
+      color: var(--success);
+      padding: 12px 16px;
+      border-radius: 16px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .alert-box.show {
+      display: block;
+    }
+  </style>
+</head>
+<body class="dashboard-page">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">💰</div>
+      <span class="logo-text">ExpensesIQ</span>
+    </div>
+    
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('dashboard') }}" class="nav-item">
+        <span class="nav-icon">📊</span>
+        <span class="nav-text">Dashboard</span>
+      </a>
+      <a href="{{ url_for('transactions_page') }}" class="nav-item">
+        <span class="nav-icon">💳</span>
+        <span class="nav-text">Transactions</span>
+      </a>
+      <a href="{{ url_for('budgets') }}" class="nav-item">
+        <span class="nav-icon">🎯</span>
+        <span class="nav-text">Budgets</span>
+      </a>
+      <a href="{{ url_for('goals_page') }}" class="nav-item">
+        <span class="nav-icon">🎪</span>
+        <span class="nav-text">Goals</span>
+      </a>
+      <a href="{{ url_for('calendar_page') }}" class="nav-item">
+        <span class="nav-icon">📅</span>
+        <span class="nav-text">Calendar</span>
+      </a>
+    </nav>
+    
+    <div class="sidebar-footer">
+      <div class="dropdown-menu" id="settingsMenu">
+        <button class="dropdown-toggle">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-text">Settings</span>
+        </button>
+        <div class="dropdown-content">
+          <a href="{{ url_for('profile') }}">
+            <span>👤</span>
+            <span>Profile</span>
+          </a>
+          <a href="{{ url_for('preferences') }}">
+            <span>🔔</span>
+            <span>Preferences</span>
+          </a>
+          <a href="{{ url_for('help_support') }}">
+            <span>❓</span>
+            <span>Help & Support</span>
+          </a>
+          <a href="/logout" style="border-top: 1px solid rgba(255,255,255,0.1); color: #ef4444;">
+            <span>🚪</span>
+            <span>Logout</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="dashboard-main">
+    <header class="dashboard-header">
+      <div class="header-left">
+        <h1>Preferences</h1>
+        <span class="header-subtitle">Customize your experience and notification settings</span>
+      </div>
+    </header>
+
+    <section class="dashboard-content">
+      <div class="preferences-container">
+        <div class="alert-box" id="successAlert">✓ Preferences updated successfully!</div>
+
+        <!-- Notification Preferences -->
+        <div class="pref-section">
+          <h3 class="section-title">📬 Notification Preferences</h3>
+          
+          <div class="pref-item">
+            <div class="pref-info">
+              <div class="pref-label">Email Notifications</div>
+              <div class="pref-desc">Receive email alerts for transactions and budget updates</div>
+            </div>
+            <button class="toggle-switch active" onclick="toggleNotification(this, 'email')"></button>
+          </div>
+
+          <div class="pref-item">
+            <div class="pref-info">
+              <div class="pref-label">SMS Alerts</div>
+              <div class="pref-desc">Get text messages for important spending alerts</div>
+            </div>
+            <button class="toggle-switch" onclick="toggleNotification(this, 'sms')"></button>
+          </div>
+
+          <div class="pref-item">
+            <div class="pref-info">
+              <div class="pref-label">Push Notifications</div>
+              <div class="pref-desc">Receive in-app notifications for budget thresholds</div>
+            </div>
+            <button class="toggle-switch active" onclick="toggleNotification(this, 'push')"></button>
+          </div>
+
+          <div class="pref-item">
+            <div class="pref-info">
+              <div class="pref-label">Weekly Summary</div>
+              <div class="pref-desc">Get a weekly digest of your spending habits</div>
+            </div>
+            <button class="toggle-switch active" onclick="toggleNotification(this, 'summary')"></button>
+          </div>
+        </div>
+
+        <!-- Display Preferences -->
+        <div class="pref-section">
+          <h3 class="section-title">🎨 Display Preferences</h3>
+          
+          <div class="pref-item">
+            <div class="pref-info">
+              <div class="pref-label">Theme</div>
+              <div class="pref-desc">Choose your preferred color scheme</div>
+            </div>
+            <select class="select-pref" onchange="changeTheme(this.value)">
+              <option value="light">Light Mode</option>
+              <option value="dark">Dark Mode</option>
+              <option value="auto">Auto (System)</option>
+            </select>
+          </div>
+
+          <div class="pref-item">
+            <div class="pref-info">
+              <div class="pref-label">Language</div>
+              <div class="pref-desc">Select your preferred language</div>
+            </div>
+            <select class="select-pref" onchange="changeLanguage(this.value)">
+              <option value="en">English</option>
+              <option value="hi">हिन्दी</option>
+              <option value="es">Español</option>
+              <option value="fr">Français</option>
+            </select>
+          </div>
+
+          <div class="pref-item">
+            <div class="pref-info">
+              <div class="pref-label">Currency</div>
+              <div class="pref-desc">Set your default currency for displays</div>
+            </div>
+            <select class="select-pref" onchange="changeCurrency(this.value)">
+              <option value="INR">₹ Indian Rupee</option>
+              <option value="USD">$ US Dollar</option>
+              <option value="EUR">€ Euro</option>
+              <option value="GBP">£ British Pound</option>
+            </select>
+          </div>
+
+          <div class="pref-item">
+            <div class="pref-info">
+              <div class="pref-label">Data Visualization</div>
+              <div class="pref-desc">Show detailed charts and graphs</div>
+            </div>
+            <button class="toggle-switch active" onclick="toggleNotification(this, 'charts')"></button>
+          </div>
+        </div>
+
+        <!-- Privacy & Security -->
+        <div class="pref-section">
+          <h3 class="section-title">🔒 Privacy & Security</h3>
+          
+          <div class="pref-item">
+            <div class="pref-info">
+              <div class="pref-label">Two-Factor Authentication</div>
+              <div class="pref-desc">Add an extra layer of security to your account</div>
+            </div>
+            <button class="toggle-switch" onclick="toggleNotification(this, '2fa')"></button>
+          </div>
+
+          <div class="pref-item">
+            <div class="pref-info">
+              <div class="pref-label">Session Timeout</div>
+              <div class="pref-desc">Auto-logout after inactivity</div>
+            </div>
+            <select class="select-pref" onchange="setSessionTimeout(this.value)">
+              <option value="15">15 minutes</option>
+              <option value="30">30 minutes</option>
+              <option value="60">1 hour</option>
+              <option value="240">4 hours</option>
+              <option value="never">Never</option>
+            </select>
+          </div>
+
+          <div class="pref-item">
+            <div class="pref-info">
+              <div class="pref-label">Data Export</div>
+              <div class="pref-desc">Export your data in CSV format</div>
+            </div>
+            <button class="toggle-switch" onclick="exportData()"></button>
+          </div>
+        </div>
+
+        <!-- Data Preferences -->
+        <div class="pref-section">
+          <h3 class="section-title">📊 Data Preferences</h3>
+          
+          <div class="pref-item">
+            <div class="pref-info">
+              <div class="pref-label">Budget Alerts</div>
+              <div class="pref-desc">Alert when spending exceeds budget limits</div>
+            </div>
+            <button class="toggle-switch active" onclick="toggleNotification(this, 'budget')"></button>
+          </div>
+
+          <div class="pref-item">
+            <div class="pref-info">
+              <div class="pref-label">Goal Reminders</div>
+              <div class="pref-desc">Get reminders for your savings goals</div>
+            </div>
+            <button class="toggle-switch active" onclick="toggleNotification(this, 'goals')"></button>
+          </div>
+
+          <div class="pref-item">
+            <div class="pref-info">
+              <div class="pref-label">AI Insights</div>
+              <div class="pref-desc">Receive personalized spending insights</div>
+            </div>
+            <button class="toggle-switch active" onclick="toggleNotification(this, 'insights')"></button>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="btn-secondary" onclick="window.history.back()">Cancel</button>
+          <button class="btn-primary" onclick="savePreferences()">Save All Preferences</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Settings dropdown menu toggle
+    const settingsMenu = document.getElementById('settingsMenu');
+    const dropdownToggle = settingsMenu.querySelector('.dropdown-toggle');
+    
+    if (dropdownToggle) {
+      dropdownToggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        settingsMenu.classList.toggle('active');
+      });
+      
+      document.addEventListener('click', function(e) {
+        if (!settingsMenu.contains(e.target)) {
+          settingsMenu.classList.remove('active');
+        }
+      });
+    }
+
+    function toggleNotification(btn, type) {
+      btn.classList.toggle('active');
+      const status = btn.classList.contains('active') ? 'enabled' : 'disabled';
+      alert(`${type.charAt(0).toUpperCase() + type.slice(1)} notifications ${status}!`);
+    }
+
+    function changeTheme(theme) {
+      alert(`Theme changed to ${theme}! 🎨`);
+    }
+
+    function changeLanguage(lang) {
+      const langs = {
+        'en': 'English',
+        'hi': 'हिन्दी',
+        'es': 'Español',
+        'fr': 'Français'
+      };
+      alert(`Language changed to ${langs[lang]}! 🌍`);
+    }
+
+    function changeCurrency(currency) {
+      alert(`Currency changed to ${currency}! 💱`);
+    }
+
+    function setSessionTimeout(timeout) {
+      const timeouts = {
+        '15': '15 minutes',
+        '30': '30 minutes',
+        '60': '1 hour',
+        '240': '4 hours',
+        'never': 'Never'
+      };
+      alert(`Session timeout set to ${timeouts[timeout]}! ⏱️`);
+    }
+
+    function exportData() {
+      alert('Your data export has been prepared! Check your email for the download link. 📊');
+    }
+
+    function savePreferences() {
+      const alert = document.getElementById('successAlert');
+      alert.classList.add('show');
+      setTimeout(() => {
+        alert('All preferences saved successfully! ✅');
+        alert.classList.remove('show');
+      }, 2000);
+    }
+  </script>
+</body>
+</html>

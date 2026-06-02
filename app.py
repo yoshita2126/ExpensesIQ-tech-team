@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, render_template_string, request, redirect
 from flask import session, url_for, jsonify, Response
 
 import sqlite3
@@ -6,6 +6,8 @@ import re
 import secrets
 import io
 import csv
+import json
+from pathlib import Path
 
 import os
 import jwt
@@ -13,6 +15,7 @@ from services.ai_service import generate_insights
 from services.email_service import send_email
 from services.forecast_service import forecast_monthly_expense
 from datetime import date, datetime, timedelta, timezone
+import calendar
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional, cast
 
@@ -24,6 +27,10 @@ from werkzeug.security import (
 app = Flask(__name__)
 
 app.secret_key = secrets.token_hex(32)
+
+# Register API routes
+from api_routes import register_api_routes
+register_api_routes(app)
 
 
 # =========================================================
@@ -99,7 +106,8 @@ def get_json_data() -> Dict[str, Any]:
 
 def get_db():
 
-    conn = sqlite3.connect("data.db")
+    db_path = Path(__file__).resolve().parent / "data.db"
+    conn = sqlite3.connect(str(db_path), timeout=10, check_same_thread=False)
 
     conn.row_factory = sqlite3.Row
 
@@ -137,6 +145,16 @@ def init_db():
             email_verified INTEGER DEFAULT 0
         )
     """)
+
+    # Add monthly_budget column to users if it doesn't exist
+    cur.execute("PRAGMA table_info(users)")
+    cols = [r[1] for r in cur.fetchall()]
+    if 'monthly_budget' not in cols:
+        try:
+            cur.execute("ALTER TABLE users ADD COLUMN monthly_budget REAL DEFAULT NULL")
+        except Exception:
+            # ignore if alter fails for any reason
+            pass
 
     # GROUPS
     cur.execute("""
@@ -250,7 +268,9 @@ def init_db():
 
             id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-            email TEXT NOT NULL,
+            email TEXT,
+
+            phone TEXT,
 
             otp TEXT NOT NULL,
 
@@ -836,9 +856,9 @@ def login():
 
         cur = conn.cursor()
 
-        # GET USER
+        # GET USER (case-insensitive lookup by username or email)
         cur.execute(
-            "SELECT * FROM users WHERE username=? OR email=?",
+            "SELECT * FROM users WHERE LOWER(username)=LOWER(?) OR LOWER(email)=LOWER(?)",
             (username, username)
         )
 
@@ -920,17 +940,21 @@ def forgot_password():
         email = user["email"]
 
         # Generate and send OTP
+        from services import otp_service
         from services.otp_service import generate_otp, send_otp, store_otp
 
         otp = generate_otp()
 
-        if not store_otp(email, otp):
+        store_result = store_otp(email=email, otp=otp)
+
+        if not store_result:
             return render_template("forgot_password.html", error="Failed to generate OTP. Try again.")
 
-        send_result = send_otp(email, otp)
+        send_result = send_otp(email=email, otp=otp)
 
-        if send_result.get("error"):
-            return render_template("forgot_password.html", error=f"Failed to send OTP: {send_result['error']}")
+        if not send_result.get('success'):
+            error_message = send_result.get('error') or 'Unknown email send error'
+            return render_template("forgot_password.html", error=f"Failed to send OTP: {error_message}")
 
         session["pending_reset_email"] = email
 
@@ -953,7 +977,7 @@ def verify_otp():
 
         from services.otp_service import verify_otp as verify_otp_func
 
-        if not verify_otp_func(email, otp):
+        if not verify_otp_func(otp=otp, email=email):
             return render_template("verify_otp.html", email=email, error="Invalid or expired OTP")
 
         session["password_reset_email"] = email
@@ -983,7 +1007,7 @@ def reset_password():
 
         from services.otp_service import verify_otp as verify_otp_func
 
-        if not verify_otp_func(email, otp):
+        if not verify_otp_func(otp=otp, email=email):
             return render_template(
                 "reset_password.html",
                 email=email,
@@ -1791,6 +1815,57 @@ def api_ocr_scan():
 # DASHBOARD
 # =========================================================
 
+def render_simple_page(title: str, content: str) -> str:
+    template = '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>{{ title }}</title>
+      <link rel="stylesheet" href="/static/style.css">
+    </head>
+    <body class="dashboard-page">
+      <aside class="sidebar">
+        <div class="sidebar-logo">
+          <div class="logo-icon">💰</div>
+          <span class="logo-text">ExpensesIQ</span>
+        </div>
+        <nav class="sidebar-nav">
+          <a href="{{ url_for('dashboard') }}" class="nav-item"> <span class="nav-icon">📊</span> <span class="nav-text">Dashboard</span> </a>
+          <a href="{{ url_for('transactions_page') }}" class="nav-item"> <span class="nav-icon">💳</span> <span class="nav-text">Transactions</span> </a>
+          <a href="{{ url_for('budgets') }}" class="nav-item"> <span class="nav-icon">🎯</span> <span class="nav-text">Budgets</span> </a>
+          <a href="{{ url_for('goals_page') }}" class="nav-item"> <span class="nav-icon">🎪</span> <span class="nav-text">Goals</span> </a>
+          <a href="{{ url_for('calendar_page') }}" class="nav-item"> <span class="nav-icon">📅</span> <span class="nav-text">Calendar</span> </a>
+        </nav>
+        <div class="sidebar-footer">
+          <a href="/logout" class="logout-btn">
+            <span class="nav-icon">🚪</span>
+            <span class="nav-text">Logout</span>
+          </a>
+        </div>
+      </aside>
+      <main class="dashboard-main">
+        <header class="dashboard-header">
+          <div class="header-left">
+            <h1>{{ title }}</h1>
+            <span class="header-subtitle">Welcome back, {{ user }}!</span>
+          </div>
+        </header>
+        <section class="dashboard-content">
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h2>{{ title }}</h2>
+            </div>
+            <div class="content-body">{{ content|safe }}</div>
+          </div>
+        </section>
+      </main>
+    </body>
+    </html>
+    '''
+    return render_template_string(template, title=title, content=content, user=session.get('user', 'Guest'))
+
 @app.route("/dashboard", methods=["GET", "POST"])
 def dashboard():
 
@@ -1816,10 +1891,19 @@ def dashboard():
                 category = request.form.get("category_other", "").strip() or category
             transaction_type = request.form.get("type", "expense")
             note = request.form.get("note", "").strip()
+            transaction_date = request.form.get("transaction_date", "").strip()
 
             if not valid_amount(amount):
                 conn.close()
                 return redirect(url_for("dashboard"))
+
+            txn_date = date.today().isoformat()
+            if transaction_date:
+                try:
+                    datetime.fromisoformat(transaction_date)
+                    txn_date = transaction_date
+                except ValueError:
+                    pass
 
             cur.execute(
                 "INSERT INTO transactions (group_name, user, amount, category, type, note, date) VALUES (?,?,?,?,?,?,?)",
@@ -1830,7 +1914,7 @@ def dashboard():
                     category,
                     transaction_type,
                     note,
-                    date.today().isoformat(),
+                    txn_date,
                 ),
             )
             conn.commit()
@@ -1863,6 +1947,42 @@ def dashboard():
                     target_value,
                     saved_value,
                     due_date,
+                ),
+            )
+            conn.commit()
+            conn.close()
+            return redirect(url_for("dashboard"))
+
+        if action == "goal_update":
+            goal_id = request.form.get("goal_id")
+            target = request.form.get("target")
+            saved = request.form.get("saved", "0")
+            due_date = request.form.get("due_date")
+
+            try:
+                goal_id_value = int(goal_id)
+                target_value = float(target)
+                saved_value = float(saved)
+            except Exception:
+                conn.close()
+                return redirect(url_for("dashboard"))
+
+            if target_value <= 0 or saved_value < 0:
+                conn.close()
+                return redirect(url_for("dashboard"))
+
+            cur.execute(
+                """
+                UPDATE goals
+                SET target=?, saved=?, due_date=?
+                WHERE id=? AND group_name=?
+                """,
+                (
+                    target_value,
+                    saved_value,
+                    due_date,
+                    goal_id_value,
+                    group_name,
                 ),
             )
             conn.commit()
@@ -1972,16 +2092,132 @@ def dashboard():
         and datetime.fromisoformat(t["date"]).date().month == date.today().month
     )
 
+    # Determine monthly budget default from used monthly expense
+    # Use session `monthly_budget` if set, otherwise fall back to actual used `month_expense`.
+    monthly_budget = session.get('monthly_budget', month_expense)
+    # If user hasn't set a daily limit, derive it from the monthly budget
+    # by dividing evenly across the days in the current month.
+    if 'daily_limit' not in session:
+        days_in_month = calendar.monthrange(date.today().year, date.today().month)[1]
+        # avoid division by zero
+        day_limit = (monthly_budget / max(1, days_in_month)) if monthly_budget else 0
+
+    # Aggregate totals per (category, type) so income and expense categories are both shown
     category_totals = {}
     for t in all_transactions:
-        if t["type"] == "expense":
-            category = t["category"] or "Uncategorized"
-            category_totals[category] = category_totals.get(category, 0) + t["amount"]
+        category = (t["category"] or "Uncategorized")
+        typ = t["type"] if t["type"] else "expense"
+        key = (category, typ)
+        category_totals[key] = category_totals.get(key, 0) + t["amount"]
 
     category_data = [
-        {"category": category, "amount": round(amount, 2)}
-        for category, amount in category_totals.items()
+        {"category": cat, "amount": round(amount, 2), "type": typ}
+        for (cat, typ), amount in category_totals.items()
     ]
+
+    # Prepare monthly trends data (income and expenses) for the selected range
+    # Determine start and end dates for trends
+    try:
+        if filter_from:
+            trends_start = datetime.fromisoformat(filter_from).date()
+        else:
+            # default to 5 months ago
+            today_dt = date.today()
+            month = today_dt.month - 5
+            year = today_dt.year
+            while month <= 0:
+                month += 12
+                year -= 1
+            trends_start = date(year, month, 1)
+
+        if filter_to:
+            trends_end = datetime.fromisoformat(filter_to).date()
+        else:
+            trends_end = date.today()
+    except Exception:
+        # on parse error fallback to last 6 months
+        trends_end = date.today()
+        trends_start = (trends_end - timedelta(days=30 * 5))
+
+    # build month list
+    months = []
+    cur_month = date(trends_start.year, trends_start.month, 1)
+    while cur_month <= trends_end:
+        months.append((cur_month.year, cur_month.month))
+        # increment month
+        y = cur_month.year + (cur_month.month // 12)
+        m = cur_month.month % 12 + 1
+        cur_month = date(y, m, 1)
+
+    trends_labels = []
+    trends_income = []
+    trends_expenses = []
+
+    for y, m in months:
+        # month label
+        trends_labels.append(f"{calendar.month_abbr[m]} {y}")
+        # sum amounts for this month
+        inc = 0.0
+        exp = 0.0
+        for t in all_transactions:
+            try:
+                td = datetime.fromisoformat(t['date']).date()
+            except Exception:
+                continue
+            if td.year == y and td.month == m:
+                if t['type'] == 'income':
+                    inc += t['amount']
+                elif t['type'] == 'expense':
+                    exp += t['amount']
+        trends_income.append(round(inc, 2))
+        trends_expenses.append(round(exp, 2))
+
+    # Build chart data for pie chart (Expense Overview)
+    expenses_only = [d for d in category_data if d['type'] == 'expense']
+    chart_labels = [d['category'] for d in expenses_only]
+    chart_amounts = [d['amount'] for d in expenses_only]
+    
+    chart_data = {
+        "labels": chart_labels,
+        "datasets": [{
+            "data": chart_amounts,
+            "backgroundColor": [
+                "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8",
+                "#F7DC6F", "#BB8FCE", "#85C1E2", "#F8B88B", "#A8E6CF"
+            ],
+            "borderColor": "var(--surface)",
+            "borderWidth": 2
+        }]
+    }
+    
+    # Build chart data for line chart (Monthly Trends)
+    trends_data = {
+        "labels": trends_labels,
+        "datasets": [
+            {
+                "label": "Income",
+                "data": trends_income,
+                "borderColor": "#22C55E",
+                "backgroundColor": "rgba(34, 197, 94, 0.1)",
+                "borderWidth": 2,
+                "fill": False,
+                "tension": 0.4,
+                "pointRadius": 4,
+                "pointBackgroundColor": "#22C55E"
+            },
+            {
+                "label": "Expenses",
+                "data": trends_expenses,
+                "borderColor": "#EF4444",
+                "backgroundColor": "rgba(239, 68, 68, 0.1)",
+                "borderWidth": 2,
+                "fill": False,
+                "tension": 0.4,
+                "pointRadius": 4,
+                "pointBackgroundColor": "#EF4444"
+            }
+        ]
+    }
 
     alert = ""
     if role != "business" and today_expense > float(day_limit):
@@ -1997,6 +2233,7 @@ def dashboard():
         saved = goal["saved"] or 0
         progress = int(min(100, (saved / target * 100) if target else 0))
         goals.append({
+            "id": goal["id"],
             "title": goal["title"],
             "target": target,
             "saved": saved,
@@ -2016,7 +2253,7 @@ def dashboard():
     conn.close()
 
     return render_template(
-        "dashboard.html",
+        "dashboard_redesigned.html",
         transactions=transactions,
         page=page,
         total_pages=total_pages,
@@ -2028,6 +2265,11 @@ def dashboard():
         week_expense=round(week_expense, 2),
         month_expense=round(month_expense, 2),
         category_data=category_data,
+        chart_data=json.dumps(chart_data),
+        trends_data=json.dumps(trends_data),
+        trends_labels=trends_labels,
+        trends_income=trends_income,
+        trends_expenses=trends_expenses,
         alert=alert,
         user=user,
         role=role,
@@ -2040,7 +2282,334 @@ def dashboard():
         payments=payments,
         filter_from=filter_from,
         filter_to=filter_to,
+        monthly_budget=round(float(monthly_budget), 2),
+        today_date=date.today().isoformat(),
     )
+
+@app.route('/test-otp')
+def test_otp():
+    """Test page for OTP SMS functionality"""
+    return render_template('test_otp.html')
+
+@app.route('/transactions')
+def transactions_page():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    group_name = session['group_name']
+    requested_date = request.args.get('date', '').strip()
+    conn = get_db()
+    cur = conn.cursor()
+
+    if requested_date:
+        cur.execute(
+            'SELECT * FROM transactions WHERE group_name=? AND date=? ORDER BY id DESC',
+            (group_name, requested_date),
+        )
+        rows = [dict(r) for r in cur.fetchall()]
+        total_for_date = sum(r.get('amount', 0.0) for r in rows if r.get('type') == 'expense')
+    else:
+        cur.execute('SELECT * FROM transactions WHERE group_name=? ORDER BY id DESC', (group_name,))
+        rows = [dict(r) for r in cur.fetchall()]
+        total_for_date = None
+
+    conn.close()
+
+    return render_template(
+        'transactions.html',
+        transactions=rows,
+        user=session.get('user'),
+        date_filter=requested_date,
+        total_for_date=total_for_date,
+    )
+
+@app.route('/goals', methods=['GET', 'POST'])
+def goals_page():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    group_name = session['group_name']
+    conn = get_db()
+    cur = conn.cursor()
+
+    if request.method == 'POST':
+        goal_id = request.form.get('goal_id')
+        target = request.form.get('target')
+        saved = request.form.get('saved', '0')
+        due_date = request.form.get('due_date')
+
+        try:
+            goal_id_value = int(goal_id)
+            target_value = float(target)
+            saved_value = float(saved)
+        except Exception:
+            conn.close()
+            return redirect(url_for('goals_page'))
+
+        if target_value > 0 and saved_value >= 0:
+            cur.execute(
+                'UPDATE goals SET target=?, saved=?, due_date=? WHERE id=? AND group_name=?',
+                (target_value, saved_value, due_date, goal_id_value, group_name),
+            )
+            conn.commit()
+
+        conn.close()
+        return redirect(url_for('goals_page'))
+
+    cur.execute('SELECT * FROM goals WHERE group_name=? ORDER BY id DESC', (group_name,))
+    rows = [dict(r) for r in cur.fetchall()]
+    conn.close()
+
+    goals = []
+    for g in rows:
+        progress = int(min(100, (g['saved'] / g['target'] * 100) if g['target'] else 0))
+        goals.append({
+            'id': g['id'],
+            'title': g['title'],
+            'target': g['target'],
+            'saved': g['saved'],
+            'due_date': g['due_date'],
+            'progress': progress,
+        })
+
+    return render_template('goals.html', goals=goals)
+
+@app.route('/budgets', methods=['GET', 'POST'])
+def budgets():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    user = session['user']
+    group_name = session.get('group_name')
+    conn = get_db()
+    cur = conn.cursor()
+
+    # compute used monthly expense
+    cur.execute('SELECT * FROM transactions WHERE group_name=?', (group_name,))
+    txs = [dict(t) for t in cur.fetchall()]
+    month_expense = sum(
+        t['amount'] for t in txs
+        if t.get('type') == 'expense' and datetime.fromisoformat(t.get('date')).date().month == date.today().month
+    )
+
+    # load current stored budget for user
+    cur.execute('SELECT monthly_budget FROM users WHERE username=?', (user,))
+    row = cur.fetchone()
+    stored_budget = row['monthly_budget'] if row is not None else None
+
+    if request.method == 'POST':
+        # set/update monthly budget for this user
+        mb = request.form.get('monthly_budget', '').strip()
+        try:
+            mb_val = float(mb) if mb else None
+        except Exception:
+            mb_val = None
+
+        cur.execute('UPDATE users SET monthly_budget=? WHERE username=?', (mb_val, user))
+        conn.commit()
+        session['monthly_budget'] = mb_val
+        stored_budget = mb_val
+
+        return redirect(url_for('budgets'))
+
+    # derive daily limit from stored monthly budget or used month expense
+    monthly_budget = stored_budget if stored_budget is not None else month_expense
+    days_in_month = calendar.monthrange(date.today().year, date.today().month)[1]
+    derived_daily = (monthly_budget / max(1, days_in_month)) if monthly_budget else 0
+
+    if stored_budget is not None and monthly_budget > 0:
+        progress_pct = round(min(100, (month_expense / stored_budget) * 100), 1)
+        remaining_amount = stored_budget - month_expense
+        budget_status = 'On track' if month_expense <= stored_budget else 'Over budget'
+        status_text = 'left' if remaining_amount >= 0 else 'over'
+        remaining_label = f"₹{abs(round(remaining_amount,2)):.2f} {status_text}"
+    else:
+        progress_pct = 100
+        remaining_amount = 0
+        budget_status = 'Budget not set'
+        remaining_label = 'Set a target to track progress'
+
+    conn.close()
+
+    budget_display = f'₹{round(float(stored_budget),2):,.2f}' if stored_budget is not None else 'Not set'
+
+    html = f"""
+    <div class="budget-hero">
+      <div>
+        <h3>Smart budget planning</h3>
+        <p>Stay ahead of your spending with a clear monthly snapshot, daily guidance, and a progress meter designed for easy review.</p>
+      </div>
+      <div class="budget-summary-pill">
+        <span>Monthly target</span>
+        <strong>{budget_display}</strong>
+      </div>
+    </div>
+
+    <div class="dashboard-grid budget-metrics">
+      <div class="budget-stat">
+        <span>Used this month</span>
+        <div class="stat-value">₹{round(month_expense,2):,.2f}</div>
+        <div class="stat-note">Current expense total for {date.today():%B %Y}</div>
+      </div>
+      <div class="budget-stat">
+        <span>Monthly budget</span>
+        <div class="stat-value">{budget_display}</div>
+        <div class="stat-note">Your target amount</div>
+      </div>
+      <div class="budget-stat">
+        <span>Daily guidance</span>
+        <div class="stat-value">₹{round(float(derived_daily),2):,.2f}</div>
+        <div class="stat-note">Suggested daily spend based on budget</div>
+      </div>
+    </div>
+
+    <div class="budget-progress">
+      <div class="progress-header">
+        <div>
+          <div class="progress-title">Budget progress</div>
+          <div class="progress-label">{budget_status}</div>
+        </div>
+        <div><strong>{progress_pct}%</strong></div>
+      </div>
+      <div class="budget-progress-bar">
+        <div class="budget-progress-fill" style="width:{progress_pct}%;"></div>
+      </div>
+      <div class="budget-progress-info">
+        <p><strong>{budget_display}</strong> target</p>
+        <p><strong>{remaining_label}</strong> remaining</p>
+      </div>
+    </div>
+
+    <div class="dashboard-card budget-form-card">
+      <h3>Update monthly budget</h3>
+      <form method="post" class="dashboard-form">
+        <div class="form-group">
+          <label>Monthly budget (₹)
+            <input class="form-input" name="monthly_budget" type="number" step="0.01" min="0" value="{stored_budget if stored_budget is not None else ''}">
+          </label>
+        </div>
+        <button class="form-btn primary" type="submit">Save budget</button>
+      </form>
+      <div class="budget-tip">Leave this blank to continue using actual spending as your monthly benchmark.</div>
+    </div>
+    """
+
+    return render_simple_page('Budgets', html)
+
+@app.route('/calendar')
+def calendar_page():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    # show a simple monthly calendar with per-day expense totals
+    user = session['user']
+    group_name = session.get('group_name')
+
+    # determine month/year to display from query params
+    try:
+        year = int(request.args.get('year', date.today().year))
+        month = int(request.args.get('month', date.today().month))
+    except Exception:
+        year = date.today().year
+        month = date.today().month
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM transactions WHERE group_name=?', (group_name,))
+    txs = [dict(t) for t in cur.fetchall()]
+
+    # prepare per-day totals and transaction counts for the month
+    days_in_month = calendar.monthrange(year, month)[1]
+    day_info = {d: {'total': 0.0, 'count': 0} for d in range(1, days_in_month + 1)}
+    for t in txs:
+        if t.get('type') != 'expense':
+            continue
+        try:
+            td = datetime.fromisoformat(t.get('date')).date()
+        except Exception:
+            continue
+        if td.year == year and td.month == month:
+            info = day_info.get(td.day)
+            if info is not None:
+                info['total'] += t.get('amount', 0.0)
+                info['count'] += 1
+
+    # navigation months
+    prev_month = month - 1
+    prev_year = year
+    if prev_month < 1:
+        prev_month = 12
+        prev_year -= 1
+
+    next_month = month + 1
+    next_year = year
+    if next_month > 12:
+        next_month = 1
+        next_year += 1
+
+    conn.close()
+
+    return render_template(
+        'calendar.html',
+        year=year,
+        month=month,
+        month_name=calendar.month_name[month],
+        days_in_month=days_in_month,
+        day_info=day_info,
+        prev_year=prev_year,
+        prev_month=prev_month,
+        next_year=next_year,
+        next_month=next_month,
+        user=user,
+        calendar=calendar,
+        date=date,
+    )
+
+@app.route('/profile')
+def profile():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    
+    user = session["user"]
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT username, email FROM users WHERE username=?", (user,))
+    user_data = cur.fetchone()
+    conn.close()
+    
+    email = user_data["email"] if user_data else ""
+    
+    return render_template(
+        "profile.html",
+        user=user,
+        email=email,
+        first_name="",
+        last_name="",
+        phone="",
+        member_since="2024"
+    )
+
+@app.route('/settings')
+def settings():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    return render_simple_page('Settings', '<p>Application settings will appear here.</p>')
+
+
+@app.route('/preferences')
+def preferences():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    
+    return render_template("preferences.html")
+
+
+@app.route('/help-support')
+def help_support():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    
+    return render_template("help_support.html")
 
 
 @app.route('/set_member', methods=['POST'])
@@ -2109,6 +2678,9 @@ def export_pdf():
 
     group_name = session['group_name']
 
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas
+
     conn = get_db()
     cur = conn.cursor()
 
@@ -2147,6 +2719,82 @@ def export_pdf():
     buffer.seek(0)
     resp = Response(buffer.read(), mimetype='application/pdf')
     resp.headers['Content-Disposition'] = 'attachment; filename=transactions.pdf'
+
+    conn.close()
+
+    return resp
+
+
+# ==========================
+# EXPORT EXCEL
+# ==========================
+
+@app.route('/export/xlsx')
+def export_xlsx():
+
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    group_name = session['group_name']
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT date, user, type, amount, category, note FROM transactions WHERE group_name=? ORDER BY id DESC",
+        (group_name,)
+    )
+
+    rows = cur.fetchall()
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Transactions"
+
+    # Add headers
+    headers = ['Date', 'User', 'Type', 'Amount', 'Category', 'Note']
+    ws.append(headers)
+
+    # Style header row
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    # Add data rows
+    for r in rows:
+        ws.append([r['date'], r['user'], r['type'], r['amount'], r['category'], r['note']])
+
+    # Auto-adjust column widths
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except Exception:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws.column_dimensions[column_letter].width = adjusted_width
+
+    # Format amount column as currency
+    for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=4, max_col=4):
+        for cell in row:
+            cell.number_format = '$#,##0.00'
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    resp = Response(buffer.getvalue(), mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    resp.headers['Content-Disposition'] = 'attachment; filename=transactions.xlsx'
 
     conn.close()
 
@@ -2533,6 +3181,8 @@ def edit_transaction(id):
         amount = float(amount)
 
         category = request.form["category"]
+        if category == "Other":
+            category = request.form.get("category_other", "").strip() or category
 
         transaction_type = request.form["type"]
 
@@ -2569,7 +3219,8 @@ def edit_transaction(id):
 
     return render_template(
         "edit_transaction.html",
-        transaction=transaction
+        transaction=transaction,
+        role=session.get("role", "household")
     )
 
 

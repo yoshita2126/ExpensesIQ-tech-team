@@ -119,14 +119,14 @@ def test_otp_system():
         
         # Store OTP
         email = "test@gmail.com"
-        result = store_otp(email, otp, expires_in_minutes=10)
+        result = store_otp(email=email, otp=otp, expires_in_minutes=10)
         if result:
             print(f"✓ OTP stored for {email}")
         else:
             print("✗ Failed to store OTP")
         
         # Verify OTP
-        is_valid = verify_otp(email, otp)
+        is_valid = verify_otp(otp, email=email)
         if is_valid:
             print("✓ OTP verification successful")
         else:

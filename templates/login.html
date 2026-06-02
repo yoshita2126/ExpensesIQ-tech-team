@@ -7,30 +7,45 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body class="auth-page">
-  <main class="auth-card clean-auth-card">
-    <div class="auth-logo stack-logo" aria-hidden="true">
-      <span></span><span></span><span></span>
+  <div class="auth-container">
+    <div class="auth-left">
+      <div class="auth-illustration">
+        <div class="wallet-illust">💳</div>
+      </div>
+      <h2>Welcome Back!</h2>
+      <p>Track your expenses, manage your budget, and achieve your financial goals.</p>
+      <div class="features-list">
+        <div class="feature-item">✓ Real-time tracking</div>
+        <div class="feature-item">✓ Budget alerts</div>
+        <div class="feature-item">✓ AI-powered insights</div>
+      </div>
     </div>
 
-    <h1>Welcome Back</h1>
-    <p class="auth-subtitle">Login to your account</p>
+    <div class="auth-right">
+      <div class="auth-card">
+        <div class="auth-logo">ExpensesIQ</div>
+        <h1>Sign in to your account</h1>
 
-    <form method="post" class="clean-auth-form">
-      <label for="username">Username or Email</label>
-      <input id="username" name="username" placeholder="Enter your username or email" required>
+        <form method="post" class="auth-form">
+            <div class="form-group">
+              <label for="username">Email or Username</label>
+              <input id="username" name="username" type="text" placeholder="Enter your email or username" required>
+            </div>
 
-      <label for="password">Password</label>
-      <input id="password" name="password" type="password" placeholder="Enter your password" required>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" placeholder="Enter your password" required>
+          </div>
 
-      <button type="submit">Login</button>
-    </form>
+          <button type="submit" class="auth-btn">Sign In</button>
+        </form>
 
-    <div class="auth-divider"></div>
-    <nav class="auth-links" aria-label="Account links">
-      <a href="/">Create Account</a>
-      <span></span>
-      <a href="/forgot-password">Forgot Password?</a>
-    </nav>
-  </main>
+        <div class="auth-footer">
+          <p><a href="/forgot-password">Forgot password?</a></p>
+          <p>Don't have an account? <a href="/">Create Account</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
